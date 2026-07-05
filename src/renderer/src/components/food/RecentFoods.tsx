@@ -34,17 +34,21 @@ export function RecentFoods({ mode }: Props) {
   const [adding, setAdding] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
   const [togglingFav, setTogglingFav] = useState<number | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     setLoading(true)
     setQuery('')
+    setError('')
 
     const loadItems =
       mode === 'favorites'
         ? window.api.favoritesGet().then(setItems)
         : window.api.quickAddGetRecent({}).then(setItems)
 
-    Promise.all([loadFavorites(), loadItems]).then(() => setLoading(false))
+    Promise.all([loadFavorites(), loadItems])
+      .catch(() => setError('Could not load foods. Switch tabs to retry.'))
+      .finally(() => setLoading(false))
   }, [mode, loadFavorites])
 
   const filtered = useMemo(() => {
@@ -56,6 +60,7 @@ export function RecentFoods({ mode }: Props) {
     const key = itemKey(item)
     if (adding) return
     setAdding(key)
+    setError('')
     try {
       const food = await window.api.foodDetail({ fdcId: item.fdcId })
       if (food) {
@@ -63,6 +68,8 @@ export function RecentFoods({ mode }: Props) {
         setAdded(prev => new Set(prev).add(key))
         setTimeout(() => setAdded(prev => { const n = new Set(prev); n.delete(key); return n }), 2000)
       }
+    } catch {
+      setError("Couldn't add that food. Please try again.")
     } finally {
       setAdding(null)
     }
@@ -122,6 +129,8 @@ export function RecentFoods({ mode }: Props) {
           />
         </div>
       </div>
+
+      {error && <p className="text-xs text-amber-400 px-4 py-1.5">{error}</p>}
 
       {/* List */}
       <div className="overflow-y-auto max-h-56">
