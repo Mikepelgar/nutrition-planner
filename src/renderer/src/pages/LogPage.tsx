@@ -305,7 +305,7 @@ function LogItemCard({ item, calTarget, expanded, onToggle, nutrientData, loadin
           <span>C <span className="text-gray-300">{fmt(item.carbsG, 0)}g</span></span>
           <span>F <span className="text-gray-300">{fmt(item.fatG, 0)}g</span></span>
           {!isMultiDay && item.entryCount != null && (
-            <span className="ml-auto text-gray-600">{item.entryCount} {item.entryCount === 1 ? 'item' : 'items'}</span>
+            <span className="ml-auto text-gray-500">{item.entryCount} {item.entryCount === 1 ? 'item' : 'items'}</span>
           )}
         </div>
       </button>
@@ -343,7 +343,7 @@ function LogItemCard({ item, calTarget, expanded, onToggle, nutrientData, loadin
             ) : nutrientData && nutrientData.length > 0 ? (
               <NutrientPanel nutrients={nutrientData} />
             ) : (
-              <p className="text-xs text-gray-600">No nutrient data available.</p>
+              <p className="text-xs text-gray-500">No nutrient data available.</p>
             )}
           </div>
         </div>
@@ -426,7 +426,7 @@ export function LogPage() {
 
         {/* Header + toggler */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">History</h1>
+          <h1 className="text-lg font-semibold text-gray-100">History</h1>
           <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
             {PERIODS.map(p => (
               <button
@@ -443,7 +443,7 @@ export function LogPage() {
         </div>
 
         {macroTargets && (
-          <p className="text-xs text-gray-600 mb-3">
+          <p className="text-xs text-gray-500 mb-3">
             Target: {fmt(calTarget, 0)} kcal/day
             {period !== 'daily' && ' · calories shown as daily average'}
           </p>
@@ -466,7 +466,7 @@ export function LogPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm text-gray-500">No entries logged yet.</p>
-            <p className="text-xs text-gray-600 mt-1">Go to Today to start tracking your food.</p>
+            <p className="text-xs text-gray-500 mt-1">Go to the Add tab to start tracking your food.</p>
           </div>
         ) : (
           <div className="space-y-2">

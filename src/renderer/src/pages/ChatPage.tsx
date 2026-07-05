@@ -1,11 +1,12 @@
 import { useRef, useEffect, useState } from 'react'
-import { Send, Square, Trash2, KeyRound, Sparkles, AlertCircle } from 'lucide-react'
+import { Send, Square, Trash2, KeyRound, Sparkles, AlertCircle, DollarSign, Zap } from 'lucide-react'
 import { useChatStore } from '../store/useChatStore'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { ChatMessage } from '../components/chat/ChatMessage'
 import { ContextPanel } from '../components/chat/ContextPanel'
 import { Button } from '../components/ui/Button'
+import { Pill } from '../components/ui/Pill'
 import type { ChatMode, SuggestionStyle } from '../lib/types'
 
 const MODE_OPTIONS: Array<{ value: ChatMode; label: string }> = [
@@ -111,50 +112,41 @@ export function ChatPage({ onGoToSettings }: Props) {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800 flex-wrap">
         <span className="text-xs text-gray-500">Goal:</span>
         {MODE_OPTIONS.map(o => (
-          <button
-            key={o.value}
-            onClick={() => setMode(o.value)}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-              mode === o.value ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
+          <Pill key={o.value} active={mode === o.value} onClick={() => setMode(o.value)}>
             {o.label}
-          </button>
+          </Pill>
         ))}
         <span className="text-gray-700">·</span>
         <span className="text-xs text-gray-500">Style:</span>
         {STYLE_OPTIONS.map(o => (
-          <button
+          <Pill
             key={o.value}
+            active={style === o.value}
+            activeClass="bg-indigo-700 text-white"
             onClick={() => setStyle(o.value)}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-              style === o.value ? 'bg-indigo-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
           >
             {o.label}
-          </button>
+          </Pill>
         ))}
         <span className="text-gray-700">·</span>
-        <button
+        <Pill
+          active={budgetMode}
+          activeClass="bg-amber-700 text-white"
           onClick={() => setBudgetMode(!budgetMode)}
           title="Prioritize cheap, high-value foods"
-          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-            budgetMode ? 'bg-amber-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-          }`}
         >
-          $ Budget
-        </button>
-        <button
+          <DollarSign size={11} /> Budget
+        </Pill>
+        <Pill
+          active={easyPrepMode}
+          activeClass="bg-amber-700 text-white"
           onClick={() => setEasyPrepMode(!easyPrepMode)}
           title="Only meals under 10 minutes or no cooking"
-          className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-            easyPrepMode ? 'bg-amber-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-          }`}
         >
-          ⚡ Easy prep
-        </button>
+          <Zap size={11} /> Easy prep
+        </Pill>
         <div className="ml-auto">
-          <Button variant="ghost" size="sm" onClick={clearMessages} title="Clear chat">
+          <Button variant="ghost" size="sm" onClick={clearMessages} title="Clear chat" aria-label="Clear chat">
             <Trash2 size={13} />
           </Button>
         </div>
@@ -255,16 +247,16 @@ export function ChatPage({ onGoToSettings }: Props) {
             style={{ fieldSizing: 'content' } as React.CSSProperties}
           />
           {isStreaming ? (
-            <Button variant="danger" size="sm" onClick={cancelStream} title="Stop">
+            <Button variant="danger" size="sm" onClick={cancelStream} title="Stop" aria-label="Stop response">
               <Square size={14} />
             </Button>
           ) : (
-            <Button size="sm" onClick={handleSend} disabled={!input.trim() || !hasKey || limitReached}>
+            <Button size="sm" onClick={handleSend} disabled={!input.trim() || !hasKey || limitReached} aria-label="Send message">
               <Send size={14} />
             </Button>
           )}
         </div>
-        <p className="text-xs text-gray-600 mt-1.5">Enter to send · Shift+Enter for new line</p>
+        <p className="text-xs text-gray-500 mt-1.5">Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   )

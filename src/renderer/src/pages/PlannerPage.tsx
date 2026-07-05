@@ -39,7 +39,7 @@ export function PlannerPage({ onNavigate }: Props) {
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-3xl mx-auto space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-gray-100 flex items-center gap-2"><CalendarRange size={20} /> Meal Planner</h1>
+        <h1 className="text-lg font-semibold text-gray-100 flex items-center gap-2"><CalendarRange size={18} /> Meal Planner</h1>
         <p className="text-sm text-gray-500 mt-0.5">Plan the week ahead and get an AI day-plan tailored to your targets.</p>
       </div>
 
@@ -68,7 +68,7 @@ export function PlannerPage({ onNavigate }: Props) {
           )
         })}
       </div>
-      <p className="text-xs text-gray-600 flex items-center gap-1">
+      <p className="text-xs text-gray-500 flex items-center gap-1">
         Tap a day to log food for it <ChevronRight size={12} />
       </p>
 
@@ -85,12 +85,12 @@ export function PlannerPage({ onNavigate }: Props) {
         {plan.text ? (
           <>
             <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{plan.text}</p>
-            <p className="text-[11px] text-gray-600 pt-1 border-t border-gray-800">
+            <p className="text-xs text-gray-500 pt-1 border-t border-gray-800">
               These are suggestions — search for each item on the Add tab to log it (auto-logging isn't supported yet).
             </p>
           </>
         ) : (
-          <p className="text-xs text-gray-600">Generates a full day of meals that hits your calorie & macro targets and respects your diet and allergens.</p>
+          <p className="text-xs text-gray-500">Generates a full day of meals that hits your calorie & macro targets and respects your diet and allergens.</p>
         )}
       </div>
     </div>

@@ -6,6 +6,7 @@ import { calcMacroTargets, DIET_LABELS } from '../../../../shared/macros'
 import { kgToDisplay, displayToKg, weightUnitLabel, cmToFtIn, ftInToCm, round } from '../../lib/units'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import { Pill } from '../ui/Pill'
 import { Select } from '../ui/Select'
 import { fmt } from '../../lib/formatters'
 
@@ -182,12 +183,9 @@ export function ProfileForm({ onboarding = false, onSaved }: Props) {
           <h2 className="text-sm font-medium text-gray-400">Personal Info</h2>
           <div className="flex gap-1">
             {(['metric', 'imperial'] as UnitSystem[]).map(u => (
-              <button key={u} type="button" onClick={() => setUnit(u)}
-                className={`text-xs px-2 py-0.5 rounded-full transition-colors ${
-                  unit === u ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-                }`}>
+              <Pill key={u} active={unit === u} onClick={() => setUnit(u)}>
                 {u === 'metric' ? 'Metric' : 'Imperial'}
-              </button>
+              </Pill>
             ))}
           </div>
         </div>
@@ -265,17 +263,16 @@ export function ProfileForm({ onboarding = false, onSaved }: Props) {
         <div>
           <label className="text-xs text-gray-400 font-medium mb-2 block">Allergens (the AI will never suggest these)</label>
           <div className="flex flex-wrap gap-2">
-            {ALLERGEN_OPTIONS.map(a => {
-              const on = (form.allergens ?? []).includes(a.value)
-              return (
-                <button key={a.value} type="button" onClick={() => toggleAllergen(a.value)}
-                  className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                    on ? 'bg-red-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-                  }`}>
-                  {a.label}
-                </button>
-              )
-            })}
+            {ALLERGEN_OPTIONS.map(a => (
+              <Pill
+                key={a.value}
+                active={(form.allergens ?? []).includes(a.value)}
+                activeClass="bg-red-700 text-white"
+                onClick={() => toggleAllergen(a.value)}
+              >
+                {a.label}
+              </Pill>
+            ))}
           </div>
         </div>
         <div>
