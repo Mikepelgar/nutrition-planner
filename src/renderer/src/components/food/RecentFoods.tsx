@@ -9,16 +9,8 @@ import type { ServingUnit } from '../../lib/types'
 
 export type FoodHistoryMode = 'history' | 'favorites'
 
-interface HistoryItem {
-  fdcId: number
-  foodDescription: string
-  servingUnit: string
-  servingAmount: number
-  grams: number
-  caloriesPer100g: number | null
-  useCount: number
-  lastUsed: string
-}
+/** Row shape shared by both endpoints — see QuickAddItem (main/db/queries/quickadd.queries). */
+type HistoryItem = Awaited<ReturnType<typeof window.api.quickAddGetRecent>>[number]
 
 function itemKey(item: HistoryItem) {
   return `${item.fdcId}__${item.servingUnit}__${item.servingAmount}`
@@ -49,8 +41,8 @@ export function RecentFoods({ mode }: Props) {
 
     const loadItems =
       mode === 'favorites'
-        ? window.api.favoritesGet().then(data => setItems(data as HistoryItem[]))
-        : window.api.quickAddGetRecent({}).then(data => setItems(data as HistoryItem[]))
+        ? window.api.favoritesGet().then(setItems)
+        : window.api.quickAddGetRecent({}).then(setItems)
 
     Promise.all([loadFavorites(), loadItems]).then(() => setLoading(false))
   }, [mode, loadFavorites])

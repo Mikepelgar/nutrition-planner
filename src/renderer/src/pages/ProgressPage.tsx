@@ -6,7 +6,7 @@ import { useAiStream } from '../hooks/useAiStream'
 import { LineChart } from '../components/charts/LineChart'
 import { BarChart } from '../components/charts/BarChart'
 import { computeStreak, projectTimeToGoal, computeAchievements } from '../../../shared/progress'
-import { kgToDisplay, weightUnitLabel } from '../lib/units'
+import { kgToDisplay, weightUnitLabel, WATER_GOAL_ML } from '../lib/units'
 import { fmt, todayIso } from '../lib/formatters'
 import { Button } from '../components/ui/Button'
 
@@ -83,7 +83,7 @@ export function ProgressPage() {
         </div>
         <div className="bg-gray-900 rounded-xl p-4">
           <h2 className="text-sm font-medium text-gray-400 mb-2">Water (ml)</h2>
-          <BarChart data={waterBars} color="#38bdf8" target={2500} />
+          <BarChart data={waterBars} color="#38bdf8" target={WATER_GOAL_ML} />
         </div>
       </div>
 
