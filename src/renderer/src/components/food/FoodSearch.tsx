@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { Search, X, Barcode } from 'lucide-react'
-import type { FoodDetail, ServingUnit } from '../../lib/types'
+import type { FoodDetail, FoodSearchResult, ServingUnit } from '../../lib/types'
 import { useFoodSearch } from '../../hooks/useFoodSearch'
 import { usePlanStore } from '../../store/usePlanStore'
+import { useFavoritesStore } from '../../store/useFavoritesStore'
 import { ServingPicker } from './ServingPicker'
 import { FoodResultItem } from './FoodResultItem'
 import { Spinner } from '../ui/Spinner'
@@ -15,7 +16,10 @@ export function FoodSearch() {
   const [barcodeInput, setBarcodeInput] = useState('')
   const [barcodeError, setBarcodeError] = useState('')
   const { addEntry } = usePlanStore()
+  const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavorite } = useFavoritesStore()
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { loadFavorites() }, [loadFavorites])
 
   async function handleBarcode() {
     const upc = barcodeInput.trim()
@@ -27,8 +31,20 @@ export function FoodSearch() {
       setBarcodeInput('')
       setBarcodeError('')
     } else {
-      setBarcodeError('No product found. Try Search, or add it under the "My foods" tab.')
+      setBarcodeError('No food found for this barcode. Try searching by name instead.')
     }
+  }
+
+  // Starred from search there's no serving context yet — store a neutral
+  // 100 g default; the Faves tab opens a ServingPicker before logging anyway.
+  function handleToggleFavorite(food: FoodSearchResult) {
+    toggleFavorite({
+      fdcId: food.fdcId,
+      foodDescription: food.description,
+      servingUnit: 'g',
+      servingAmount: 100,
+      grams: 100
+    })
   }
 
   useEffect(() => {
@@ -149,6 +165,8 @@ export function FoodSearch() {
                       food={food}
                       onClick={selectFood}
                       disabled={loadingDetail}
+                      isFavorite={favoriteIds.has(food.fdcId)}
+                      onToggleFavorite={handleToggleFavorite}
                     />
                   ))}
                 </div>
@@ -168,6 +186,8 @@ export function FoodSearch() {
                       food={food}
                       onClick={selectFood}
                       disabled={loadingDetail}
+                      isFavorite={favoriteIds.has(food.fdcId)}
+                      onToggleFavorite={handleToggleFavorite}
                     />
                   ))}
                 </div>

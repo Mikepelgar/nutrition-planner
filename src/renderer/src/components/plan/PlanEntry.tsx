@@ -1,17 +1,24 @@
 import { useState } from 'react'
 import { Trash2, ChevronDown, ChevronUp } from 'lucide-react'
-import type { PlanEntry as Entry, ServingUnit } from '../../lib/types'
+import type { PlanEntry as Entry, MealType, ServingUnit } from '../../lib/types'
 import { usePlanStore } from '../../store/usePlanStore'
 import { ServingPicker } from '../food/ServingPicker'
 import { fmt } from '../../lib/formatters'
 import { SERVING_UNIT_LABELS } from '../../lib/unitConversion'
+
+const MEAL_OPTIONS: { id: MealType; label: string }[] = [
+  { id: 'breakfast', label: 'Breakfast' },
+  { id: 'lunch',     label: 'Lunch'     },
+  { id: 'dinner',    label: 'Dinner'    },
+  { id: 'snack',     label: 'Snack'     }
+]
 
 interface Props {
   entry: Entry
 }
 
 export function PlanEntryRow({ entry }: Props) {
-  const { deleteEntry, updateEntry, foodCache } = usePlanStore()
+  const { deleteEntry, updateEntry, setEntryMeal, foodCache } = usePlanStore()
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -38,6 +45,7 @@ export function PlanEntryRow({ entry }: Props) {
           <p className="text-sm text-gray-200 truncate">{entry.foodDescription}</p>
           <p className="text-xs text-gray-500">
             {fmt(entry.servingAmount)} {SERVING_UNIT_LABELS[entry.servingUnit]} · {fmt(entry.grams, 0)}g · {fmt(calories, 0)} kcal
+            <span className="text-gray-600"> · {entry.meal}</span>
           </p>
         </div>
         <button
@@ -57,7 +65,24 @@ export function PlanEntryRow({ entry }: Props) {
         </button>
       </div>
       {editing && food && (
-        <div className="px-3 pb-3">
+        <div className="px-3 pb-3 space-y-2">
+          {/* Optional meal tag — labeling lives here, out of the main flow */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-gray-500 mr-0.5">Meal:</span>
+            {MEAL_OPTIONS.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setEntryMeal(entry.id, m.id)}
+                className={`px-2 py-0.5 text-xs rounded-full font-medium transition-colors ${
+                  entry.meal === m.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
           <ServingPicker food={food} onAdd={handleUpdate} onCancel={() => setEditing(false)} />
         </div>
       )}

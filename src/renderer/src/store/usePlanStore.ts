@@ -24,12 +24,10 @@ interface PlanState {
   loadDay: (date: string) => Promise<void>
   addEntry: (food: FoodDetail, servingUnit: ServingUnit, servingAmount: number) => Promise<void>
   updateEntry: (entryId: number, food: FoodDetail, servingUnit: ServingUnit, servingAmount: number) => Promise<void>
+  setEntryMeal: (entryId: number, meal: MealType) => Promise<void>
   deleteEntry: (entryId: number) => Promise<void>
   cacheFood: (food: FoodDetail) => void
-  setActiveMeal: (meal: MealType) => void
-  logSavedMeal: (savedMealId: number, meal?: MealType) => Promise<void>
-  saveMealAsRecipe: (name: string, meal?: MealType) => Promise<number | null>
-  copyFrom: (sourceDate: string, meal?: MealType) => Promise<void>
+  copyFrom: (sourceDate: string) => Promise<void>
 }
 
 function computeTotals(entries: PlanEntry[], foodCache: Map<number, FoodDetail>): NutrientTotal[] {
@@ -99,6 +97,20 @@ export const usePlanStore = create<PlanState>((set, get) => ({
     set({ entries: newEntries, foodCache: newCache, nutrientTotals: computeTotals(newEntries, newCache) })
   },
 
+  setEntryMeal: async (entryId, meal) => {
+    const { entries } = get()
+    const current = entries.find(e => e.id === entryId)
+    if (!current || current.meal === meal) return
+    const updated = await window.api.planUpdateEntry({
+      entryId,
+      servingUnit: current.servingUnit,
+      servingAmount: current.servingAmount,
+      grams: current.grams,
+      meal
+    })
+    set({ entries: get().entries.map(e => e.id === entryId ? updated : e) })
+  },
+
   deleteEntry: async (entryId) => {
     await window.api.planDeleteEntry({ entryId })
     const { entries, foodCache } = get()
@@ -112,26 +124,9 @@ export const usePlanStore = create<PlanState>((set, get) => ({
     set({ foodCache: cache })
   },
 
-  setActiveMeal: (meal) => set({ activeMeal: meal }),
-
-  logSavedMeal: async (savedMealId, meal) => {
-    const { plan, date, activeMeal } = get()
-    if (!plan) return
-    await window.api.savedMealLog({ planId: plan.id, savedMealId, meal: meal ?? activeMeal })
-    await get().loadDay(date)
-  },
-
-  saveMealAsRecipe: async (name, meal) => {
-    const { plan } = get()
-    if (!plan) return null
-    const res = await window.api.savedMealCreateFromDay({ name, planId: plan.id, meal })
-    return res.id
-  },
-
-  copyFrom: async (sourceDate, meal) => {
+  copyFrom: async (sourceDate) => {
     const { date } = get()
-    if (meal) await window.api.planCopyMeal({ sourceDate, meal, targetDate: date })
-    else await window.api.planCopyDay({ sourceDate, targetDate: date })
+    await window.api.planCopyDay({ sourceDate, targetDate: date })
     await get().loadDay(date)
   }
 }))

@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, Plus, Check, Flame, Star } from 'lucide-react'
 import { usePlanStore } from '../../store/usePlanStore'
+import { useFavoritesStore } from '../../store/useFavoritesStore'
 import { Skeleton } from '../ui/Skeleton'
-import { fmt, shiftDate, todayIso } from '../../lib/formatters'
+import { fmt } from '../../lib/formatters'
 import { SERVING_UNIT_LABELS } from '../../lib/unitConversion'
 import type { ServingUnit } from '../../lib/types'
 
-export type FoodHistoryMode = 'recent' | 'previous' | 'favorites'
+export type FoodHistoryMode = 'history' | 'favorites'
 
 interface HistoryItem {
   fdcId: number
@@ -24,9 +25,8 @@ function itemKey(item: HistoryItem) {
 }
 
 const EMPTY_MSG: Record<FoodHistoryMode, { primary: string; secondary: string }> = {
-  recent:    { primary: 'No foods logged in the last 2 weeks.', secondary: 'Log food in Add to see it here.' },
-  previous:  { primary: 'No foods logged yet.',                 secondary: 'Log food in Add to see it here.' },
-  favorites: { primary: 'No favorites yet.',                    secondary: 'Tap ★ on any food to save it here.' },
+  history:   { primary: 'No foods logged yet.', secondary: 'Foods you log will show up here.' },
+  favorites: { primary: 'No favorites yet.',    secondary: 'Tap ★ on any food to save it here.' }
 }
 
 interface Props {
@@ -35,39 +35,25 @@ interface Props {
 
 export function RecentFoods({ mode }: Props) {
   const { addEntry } = usePlanStore()
+  const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavorite } = useFavoritesStore()
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
-  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set())
   const [togglingFav, setTogglingFav] = useState<number | null>(null)
 
-  // Reload list + favorite IDs whenever mode changes
   useEffect(() => {
     setLoading(true)
     setQuery('')
 
-    const loadFavIds = window.api.favoritesGetIds().then(ids => {
-      setFavoriteIds(new Set(ids as number[]))
-    })
+    const loadItems =
+      mode === 'favorites'
+        ? window.api.favoritesGet().then(data => setItems(data as HistoryItem[]))
+        : window.api.quickAddGetRecent({}).then(data => setItems(data as HistoryItem[]))
 
-    let loadItems: Promise<void>
-    if (mode === 'favorites') {
-      loadItems = window.api.favoritesGet().then(data => {
-        setItems(data as HistoryItem[])
-      })
-    } else {
-      const cutoffDate = mode === 'recent'
-        ? shiftDate(todayIso(), -13)   // last 14 days
-        : undefined
-      loadItems = window.api.quickAddGetRecent({ cutoffDate }).then(data => {
-        setItems(data as HistoryItem[])
-      })
-    }
-
-    Promise.all([loadFavIds, loadItems]).then(() => setLoading(false))
-  }, [mode])
+    Promise.all([loadFavorites(), loadItems]).then(() => setLoading(false))
+  }, [mode, loadFavorites])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -94,21 +80,14 @@ export function RecentFoods({ mode }: Props) {
     if (togglingFav !== null) return
     setTogglingFav(item.fdcId)
     try {
-      const result = await window.api.favoritesToggle({
+      const isFavorite = await toggleFavorite({
         fdcId: item.fdcId,
         foodDescription: item.foodDescription,
         servingUnit: item.servingUnit,
         servingAmount: item.servingAmount,
         grams: item.grams
       })
-      const { isFavorite } = result as { isFavorite: boolean }
-      setFavoriteIds(prev => {
-        const next = new Set(prev)
-        if (isFavorite) next.add(item.fdcId)
-        else next.delete(item.fdcId)
-        return next
-      })
-      // Remove from favorites list if we're in favorites mode and just unstarred
+      // Remove from the favorites list if we're in favorites mode and just unstarred
       if (mode === 'favorites' && !isFavorite) {
         setItems(prev => prev.filter(i => i.fdcId !== item.fdcId))
       }
