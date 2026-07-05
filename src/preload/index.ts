@@ -126,11 +126,6 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('export:data', payload),
 
   // Event listeners (return cleanup function)
-  onDownloadProgress: (cb: (data: { dataset: string; percent: number }) => void) => {
-    const handler = (_: unknown, data: { dataset: string; percent: number }) => cb(data)
-    ipcRenderer.on('download:progress', handler)
-    return () => ipcRenderer.removeListener('download:progress', handler)
-  },
   onAiChunk: (cb: (data: { messageId: string; chunk: string }) => void) => {
     const handler = (_: unknown, data: { messageId: string; chunk: string }) => cb(data)
     ipcRenderer.on('ai:chunk', handler)
