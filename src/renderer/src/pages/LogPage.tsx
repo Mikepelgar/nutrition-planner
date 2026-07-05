@@ -368,7 +368,9 @@ export function LogPage() {
   const [loading, setLoading] = useState(true)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [nutrientCache, setNutrientCache] = useState<Map<string, NutrientProgressData[]>>(new Map())
-  const [loadingNutrients, setLoadingNutrients] = useState(false)
+  // Key currently being fetched — per-item so rapidly expanding two rows can't
+  // show the wrong row as loading.
+  const [loadingKey, setLoadingKey] = useState<string | null>(null)
 
   const calTarget = macroTargets?.calories ?? 2000
 
@@ -384,7 +386,9 @@ export function LogPage() {
       '2000-01-01'
 
     window.api.logGetDailyLogs({ startDate, endDate: today })
-      .then(data => { setLogs(data as DailyEntry[]); setLoading(false) })
+      .then(data => setLogs(data as DailyEntry[]))
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false))
   }, [period])
 
   // Build period items from daily data
@@ -404,15 +408,16 @@ export function LogPage() {
     setExpandedKey(item.key)
 
     if (nutrientCache.has(item.key) || !profile || !macroTargets) return
-    setLoadingNutrients(true)
+    setLoadingKey(item.key)
 
     window.api.logGetNutrientBreakdown({ startDate: item.startDate, endDate: item.endDate })
       .then(breakdown => {
         const intakes = new Map((breakdown as NutrientBreak[]).map(b => [b.nutrientId, b.dailyAvg]))
         const progressData = buildNutrientProgress(intakes, profile, macroTargets)
         setNutrientCache(prev => new Map(prev).set(item.key, progressData))
-        setLoadingNutrients(false)
       })
+      .catch(() => { /* row falls back to the "No nutrient data" message */ })
+      .finally(() => setLoadingKey(prev => (prev === item.key ? null : prev)))
   }, [expandedKey, nutrientCache, profile, macroTargets])
 
   return (
@@ -473,7 +478,7 @@ export function LogPage() {
                 expanded={expandedKey === item.key}
                 onToggle={() => handleToggle(item)}
                 nutrientData={nutrientCache.get(item.key) ?? null}
-                loadingNutrients={loadingNutrients && expandedKey === item.key}
+                loadingNutrients={loadingKey === item.key}
                 period={period}
               />
             ))}

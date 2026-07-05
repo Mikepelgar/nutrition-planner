@@ -24,14 +24,18 @@ export function FoodSearch() {
   async function handleBarcode() {
     const upc = barcodeInput.trim()
     if (!upc) return
-    const detail = await window.api.foodByBarcode({ upc })
-    if (detail) {
-      setSelectedFood(detail)
-      setBarcodeMode(false)
-      setBarcodeInput('')
-      setBarcodeError('')
-    } else {
-      setBarcodeError('No food found for this barcode. Try searching by name instead.')
+    try {
+      const detail = await window.api.foodByBarcode({ upc })
+      if (detail) {
+        setSelectedFood(detail)
+        setBarcodeMode(false)
+        setBarcodeInput('')
+        setBarcodeError('')
+      } else {
+        setBarcodeError('No food found for this barcode. Try searching by name instead.')
+      }
+    } catch {
+      setBarcodeError('Barcode lookup failed. Please try again.')
     }
   }
 

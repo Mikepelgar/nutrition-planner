@@ -21,13 +21,15 @@ export function useRangeData(days: number) {
       window.api.logGetDailyLogs({ startDate: start, endDate: end }),
       window.api.weightGetRange({ startDate: start, endDate: end }),
       window.api.waterGetRange({ startDate: start, endDate: end })
-    ]).then(([l, w, wa]) => {
-      if (!active) return
-      setLogs(l)
-      setWeights(w)
-      setWaters(wa)
-      setLoading(false)
-    })
+    ])
+      .then(([l, w, wa]) => {
+        if (!active) return
+        setLogs(l)
+        setWeights(w)
+        setWaters(wa)
+      })
+      .catch(() => { /* charts fall back to their empty states */ })
+      .finally(() => { if (active) setLoading(false) })
     return () => {
       active = false
     }

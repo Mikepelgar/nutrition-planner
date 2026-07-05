@@ -65,6 +65,7 @@ export function ProfileForm({ onboarding = false, onSaved }: Props) {
   const [form, setForm] = useState<UserProfile>(EMPTY_FORM)
   const [avoidInput, setAvoidInput] = useState('')
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
   // Local display strings for unit-converted fields (avoids decimal-typing jitter).
   const [weightStr, setWeightStr] = useState('')
   const [ftStr, setFtStr] = useState('')
@@ -143,7 +144,15 @@ export function ProfileForm({ onboarding = false, onSaved }: Props) {
   }
 
   async function handleSave() {
-    await save(form)
+    setSaveError('')
+    try {
+      await save(form)
+    } catch (err) {
+      // Main-process validation rejected the profile (e.g. a cleared height
+      // field left 0) — show it instead of failing silently.
+      setSaveError(`Couldn't save: ${(err as Error).message.replace(/^.*Error: /, '')}`)
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     onSaved?.()
@@ -309,6 +318,8 @@ export function ProfileForm({ onboarding = false, onSaved }: Props) {
           ))}
         </div>
       </div>
+
+      {saveError && <p className="text-xs text-red-400">{saveError}</p>}
 
       <Button onClick={handleSave} className="w-full">
         {saved ? '✓ Saved' : onboarding ? 'Get Started →' : 'Save Profile'}

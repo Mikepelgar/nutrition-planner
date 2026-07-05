@@ -25,7 +25,8 @@ export const useProfileStore = create<ProfileState>((set) => ({
   },
 
   save: async (profile) => {
-    await window.api.profileSave(profile)
-    set({ profile, macroTargets: calcMacros(profile) })
+    // Keep the sanitized copy the main process actually persisted.
+    const saved = await window.api.profileSave(profile)
+    set({ profile: saved, macroTargets: calcMacros(saved) })
   }
 }))
