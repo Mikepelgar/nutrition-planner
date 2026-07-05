@@ -1,0 +1,62 @@
+appId: com.nutritionplanner.app
+productName: Nutrition Planner
+directories:
+  buildResources: build
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!scripts/*'
+  - '!resources/usda-raw/**'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.*}'
+  - '!{tailwind.config.*,postcss.config.*}'
+asarUnpack:
+  - resources/**
+  - node_modules/better-sqlite3/**
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  executableName: NutritionPlanner
+nsis:
+  artifactName: ${name}-${version}-setup.exe
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSCameraUsageDescription: Application requests access to the device's camera.
+    NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+  notarize: false
+linux:
+  target:
+    - AppImage
+    - deb
+  maintainer: mikep
+  category: Utility
+
+# ── Auto-update publishing ──────────────────────────────────────────────────
+# Inert until a real repo is set + GH_TOKEN is provided at publish time
+# (`electron-builder --publish always`). Update the owner/repo before releasing.
+publish:
+  provider: github
+  owner: '[GITHUB_OWNER]'
+  repo: '[GITHUB_REPO]'
+
+# ── Code signing (inert until credentials are supplied) ─────────────────────
+# Windows: electron-builder auto-signs when these env vars are set at build time:
+#   CSC_LINK            = path or base64 of your .pfx code-signing certificate
+#   CSC_KEY_PASSWORD    = the certificate password
+# macOS: set CSC_LINK/CSC_KEY_PASSWORD (Developer ID) and, to notarize, set
+#   notarize: true above plus APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID.
+# Without these, builds are UNSIGNED and will trigger SmartScreen/Gatekeeper warnings.

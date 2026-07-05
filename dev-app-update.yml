@@ -1,0 +1,6 @@
+# Used by electron-updater to test auto-update in a non-packaged build.
+# Replace the owner/repo with your GitHub repository before testing updates.
+provider: github
+owner: '[GITHUB_OWNER]'
+repo: '[GITHUB_REPO]'
+updaterCacheDirName: nutrition-planner-updater

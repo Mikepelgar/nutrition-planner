@@ -1,0 +1,58 @@
+PLACEHOLDER LICENSE — REVIEW AND FINALIZE BEFORE DISTRIBUTION
+=============================================================
+
+Copyright (c) [YEAR] [COPYRIGHT HOLDER]. All rights reserved.
+
+This project ships with a PLACEHOLDER license. Before distributing Nutrition
+Planner, replace [YEAR] and [COPYRIGHT HOLDER] above and choose ONE of the
+options below (delete the other).
+
+-------------------------------------------------------------------------------
+OPTION A — Proprietary / All Rights Reserved (active by default)
+-------------------------------------------------------------------------------
+This software and its source code are the property of the copyright holder.
+No permission is granted to copy, modify, merge, publish, distribute,
+sublicense, or sell copies of this software, in whole or in part, except as
+expressly authorized in writing by the copyright holder. Use of the compiled
+application is permitted solely under the terms of any end-user license
+agreement (EULA) the copyright holder provides with a distributed build.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM,
+OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Nutrition Planner is a tracking tool and does not provide medical advice.
+
+-------------------------------------------------------------------------------
+OPTION B — MIT License (permissive open source) — uncomment to use instead
+-------------------------------------------------------------------------------
+MIT License
+
+Copyright (c) [YEAR] [COPYRIGHT HOLDER]
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+Note: the bundled food database includes data from Open Food Facts, which is
+licensed under the Open Database License (ODbL). See NOTICES.md — its terms may
+constrain how you redistribute the database regardless of the option above.

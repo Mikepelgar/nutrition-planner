@@ -1,0 +1,8 @@
+node_modules
+out
+dist
+.env
+resources/usda-raw/
+resources/*.db
+*.tsbuildinfo
+scripts/*.png
