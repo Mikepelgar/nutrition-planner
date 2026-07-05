@@ -119,7 +119,6 @@ declare global {
 
       exportData(payload: { format: 'json' | 'csv' }): Promise<{ success: boolean; path?: string }>
 
-      onDownloadProgress(cb: (data: { dataset: string; percent: number }) => void): () => void
       onAiChunk(cb: (data: { messageId: string; chunk: string }) => void): () => void
       onAiDone(cb: (data: { messageId: string }) => void): () => void
       onAiError(cb: (data: { messageId: string; code: AiErrorCode; message: string }) => void): () => void
