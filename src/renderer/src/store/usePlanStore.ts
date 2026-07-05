@@ -19,7 +19,6 @@ interface PlanState {
   foodCache: Map<number, FoodDetail>
   nutrientTotals: NutrientTotal[]
   loading: boolean
-  activeMeal: MealType
 
   loadDay: (date: string) => Promise<void>
   addEntry: (food: FoodDetail, servingUnit: ServingUnit, servingAmount: number) => Promise<void>
@@ -57,30 +56,31 @@ export const usePlanStore = create<PlanState>((set, get) => ({
   foodCache: new Map(),
   nutrientTotals: [],
   loading: false,
-  activeMeal: defaultMeal(),
 
   loadDay: async (date) => {
     set({ loading: true, date })
     const plan = await window.api.planGetOrCreate({ date })
     const entries = await window.api.planGetEntries({ planId: plan.id })
 
-    // Fetch food details for any uncached entries
+    // Fetch food details for any uncached entries — in parallel, one request
+    // per unique food (the old serial loop was one IPC round-trip per entry).
     const cache = new Map(get().foodCache)
-    for (const entry of entries) {
-      if (!cache.has(entry.fdcId)) {
-        const detail = await window.api.foodDetail({ fdcId: entry.fdcId })
-        if (detail) cache.set(entry.fdcId, detail)
-      }
+    const missingIds = [...new Set(entries.map(e => e.fdcId))].filter(id => !cache.has(id))
+    const details = await Promise.all(missingIds.map(fdcId => window.api.foodDetail({ fdcId })))
+    for (const detail of details) {
+      if (detail) cache.set(detail.fdcId, detail)
     }
 
     set({ plan, entries, foodCache: cache, nutrientTotals: computeTotals(entries, cache), loading: false })
   },
 
   addEntry: async (food, servingUnit, servingAmount) => {
-    const { plan, entries, foodCache, activeMeal } = get()
+    const { plan, entries, foodCache } = get()
     if (!plan) return
     const grams = toGrams(servingAmount, servingUnit, food)
-    const entry = await window.api.planAddEntry({ planId: plan.id, fdcId: food.fdcId, servingUnit, servingAmount, grams, meal: activeMeal })
+    // Meal label defaults to the time of day the entry is LOGGED (evaluating
+    // at store creation froze the label at app-launch time).
+    const entry = await window.api.planAddEntry({ planId: plan.id, fdcId: food.fdcId, servingUnit, servingAmount, grams, meal: defaultMeal() })
     const newCache = new Map(foodCache)
     newCache.set(food.fdcId, food)
     const newEntries = [...entries, entry]

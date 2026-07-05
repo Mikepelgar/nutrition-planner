@@ -6,9 +6,7 @@ import { useNutrientTotals } from '../hooks/useNutrientTotals'
 import { fmt, shiftDate, todayIso } from '../lib/formatters'
 import { computeStreak } from '../../../shared/progress'
 import type { WeightEntry } from '../lib/types'
-import { kgToDisplay, displayToKg, weightUnitLabel, mlToDisplay, volumeUnitLabel, round } from '../lib/units'
-
-const WATER_GOAL_ML = 2500
+import { kgToDisplay, displayToKg, weightUnitLabel, mlToDisplay, volumeUnitLabel, round, WATER_GOAL_ML } from '../lib/units'
 
 interface Props {
   onNavigate?: (tab: string) => void
@@ -54,7 +52,7 @@ function MacroBar({ label, intake, target, color }: { label: string; intake: num
 }
 
 export function HomePage({ onNavigate }: Props) {
-  const { entries, nutrientTotals, foodCache, date, loadDay } = usePlanStore()
+  const { entries, nutrientTotals, date, loadDay } = usePlanStore()
   const { macroTargets, profile } = useProfileStore()
   const nutrients = useNutrientTotals()
   const [streak, setStreak] = useState(0)
@@ -102,10 +100,7 @@ export function HomePage({ onNavigate }: Props) {
   }, [entries.length])
 
   const totalsMap = new Map(nutrientTotals.map(n => [n.nutrientId, n.intake]))
-  const intakeCal = entries.reduce((sum, e) => {
-    const cal = foodCache.get(e.fdcId)?.nutrients.find(n => n.nutrientId === 1008)?.amount ?? 0
-    return sum + (e.grams / 100) * cal
-  }, 0)
+  const intakeCal = totalsMap.get(1008) ?? 0
   const proteinIn = totalsMap.get(1003) ?? 0
   const carbsIn = totalsMap.get(1005) ?? 0
   const fatIn = totalsMap.get(1004) ?? 0

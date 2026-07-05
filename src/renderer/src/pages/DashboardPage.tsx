@@ -19,7 +19,7 @@ const FOOD_TABS: { id: FoodTab; label: string }[] = [
 ]
 
 export function DashboardPage() {
-  const { date, entries, loading, loadDay, foodCache, copyFrom } = usePlanStore()
+  const { date, entries, loading, loadDay, nutrientTotals, copyFrom } = usePlanStore()
   const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()
   const [foodTab, setFoodTab] = useState<FoodTab>('search')
@@ -28,11 +28,7 @@ export function DashboardPage() {
   useEffect(() => { loadDay(date) }, [date])
   useEffect(() => { window.api.exerciseCaloriesForDate({ date }).then(r => setBurned(r.calories)) }, [date])
 
-  const totalCal = entries.reduce((sum, e) => {
-    const food = foodCache.get(e.fdcId)
-    const calPer100 = food?.nutrients.find(n => n.nutrientId === 1008)?.amount ?? 0
-    return sum + (e.grams / 100) * calPer100
-  }, 0)
+  const totalCal = nutrientTotals.find(n => n.nutrientId === 1008)?.intake ?? 0
 
   const isToday = date === todayIso()
   const dateInputRef = useRef<HTMLInputElement>(null)
