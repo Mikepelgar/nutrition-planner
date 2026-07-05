@@ -1,12 +1,20 @@
 import type { WeightEntry } from '../renderer/src/lib/types'
 
+/** Local-date YYYY-MM-DD (toISOString would give the UTC day, off by one around midnight). */
+function localIso(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 /** Consecutive days (ending today, or yesterday if today isn't logged) present in the set. */
 export function computeStreak(loggedDates: Set<string>, today: string): number {
   let count = 0
   const d = new Date(today + 'T00:00:00')
   if (!loggedDates.has(today)) d.setDate(d.getDate() - 1)
   for (;;) {
-    const iso = d.toISOString().slice(0, 10)
+    const iso = localIso(d)
     if (!loggedDates.has(iso)) break
     count++
     d.setDate(d.getDate() - 1)
