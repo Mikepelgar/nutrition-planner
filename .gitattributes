@@ -1,0 +1,2 @@
+# Store text files with LF in the repo; let git handle platform line endings.
+* text=auto

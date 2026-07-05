@@ -1,0 +1,167 @@
+import { contextBridge, ipcRenderer } from 'electron'
+
+contextBridge.exposeInMainWorld('api', {
+  // Food
+  foodSearch: (payload: { query: string; limit?: number; offset?: number }) =>
+    ipcRenderer.invoke('food:search', payload),
+  foodDetail: (payload: { fdcId: number }) =>
+    ipcRenderer.invoke('food:detail', payload),
+  foodByBarcode: (payload: { upc: string }) =>
+    ipcRenderer.invoke('food:byBarcode', payload),
+
+  // Plan
+  planGetOrCreate: (payload: { date: string }) =>
+    ipcRenderer.invoke('plan:getOrCreate', payload),
+  planGetEntries: (payload: { planId: number }) =>
+    ipcRenderer.invoke('plan:getEntries', payload),
+  planAddEntry: (payload: { planId: number; fdcId: number; servingUnit: string; servingAmount: number; grams: number; meal?: string }) =>
+    ipcRenderer.invoke('plan:addEntry', payload),
+  planUpdateEntry: (payload: { entryId: number; servingUnit: string; servingAmount: number; grams: number }) =>
+    ipcRenderer.invoke('plan:updateEntry', payload),
+  planDeleteEntry: (payload: { entryId: number }) =>
+    ipcRenderer.invoke('plan:deleteEntry', payload),
+  planCopyDay: (payload: { sourceDate: string; targetDate: string }) =>
+    ipcRenderer.invoke('plan:copyDay', payload),
+  planCopyMeal: (payload: { sourceDate: string; meal: string; targetDate: string }) =>
+    ipcRenderer.invoke('plan:copyMeal', payload),
+
+  // Profile
+  profileGet: () =>
+    ipcRenderer.invoke('profile:get'),
+  profileSave: (profile: unknown) =>
+    ipcRenderer.invoke('profile:save', profile),
+
+  // AI
+  aiStartStream: (payload: {
+    messageId: string
+    prompt: string
+    mode: string
+    style: string
+    budgetMode?: boolean
+    easyPrepMode?: boolean
+    date: string
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>
+  }) =>
+    ipcRenderer.invoke('ai:startStream', payload),
+  aiCancelStream: (payload: { messageId: string }) =>
+    ipcRenderer.invoke('ai:cancelStream', payload),
+  aiWeeklyReview: (payload: { messageId: string; date: string }) =>
+    ipcRenderer.invoke('ai:weeklyReview', payload),
+  aiPlanDay: (payload: { messageId: string; date: string; mode?: string; style?: string; budgetMode?: boolean; easyPrepMode?: boolean }) =>
+    ipcRenderer.invoke('ai:planDay', payload),
+  aiGetContext: (payload: { date: string; mode: string; style: string; budgetMode?: boolean; easyPrepMode?: boolean }) =>
+    ipcRenderer.invoke('ai:getContext', payload),
+  aiSaveKey: (payload: { provider: string; key: string; model?: string }) =>
+    ipcRenderer.invoke('ai:saveKey', payload),
+  aiSetKeySource: (payload: { source: 'builtin' | 'custom' }) =>
+    ipcRenderer.invoke('ai:setKeySource', payload),
+  aiHasKey: () =>
+    ipcRenderer.invoke('ai:hasKey'),
+
+  // Quick Add
+  quickAddGetRecent: (payload?: { cutoffDate?: string }) =>
+    ipcRenderer.invoke('quickadd:getRecent', payload),
+
+  // Favorites
+  favoritesGet: () =>
+    ipcRenderer.invoke('favorites:get'),
+  favoritesGetIds: () =>
+    ipcRenderer.invoke('favorites:getIds'),
+  favoritesToggle: (payload: { fdcId: number; foodDescription: string; servingUnit: string; servingAmount: number; grams: number }) =>
+    ipcRenderer.invoke('favorites:toggle', payload),
+
+  // Log
+  logGetDailyLogs: (payload: { startDate: string; endDate: string }) =>
+    ipcRenderer.invoke('log:getDailyLogs', payload),
+  logGetNutrientBreakdown: (payload: { startDate: string; endDate: string }) =>
+    ipcRenderer.invoke('log:getNutrientBreakdown', payload),
+
+  // Weight & water tracking
+  weightSet: (payload: { date: string; weightKg: number }) =>
+    ipcRenderer.invoke('weight:set', payload),
+  weightGetRange: (payload: { startDate: string; endDate: string }) =>
+    ipcRenderer.invoke('weight:getRange', payload),
+  weightLatest: () =>
+    ipcRenderer.invoke('weight:latest'),
+  waterGet: (payload: { date: string }) =>
+    ipcRenderer.invoke('water:get', payload),
+  waterGetRange: (payload: { startDate: string; endDate: string }) =>
+    ipcRenderer.invoke('water:getRange', payload),
+  waterAdd: (payload: { date: string; deltaMl: number }) =>
+    ipcRenderer.invoke('water:add', payload),
+
+  // Exercise
+  exerciseAdd: (payload: { date: string; name: string; caloriesBurned: number; durationMin?: number }) =>
+    ipcRenderer.invoke('exercise:add', payload),
+  exerciseGetForDate: (payload: { date: string }) =>
+    ipcRenderer.invoke('exercise:getForDate', payload),
+  exerciseDelete: (payload: { id: number }) =>
+    ipcRenderer.invoke('exercise:delete', payload),
+  exerciseCaloriesForDate: (payload: { date: string }) =>
+    ipcRenderer.invoke('exercise:caloriesForDate', payload),
+  exerciseGetRange: (payload: { startDate: string; endDate: string }) =>
+    ipcRenderer.invoke('exercise:getRange', payload),
+
+  // App
+  appVersion: () => ipcRenderer.invoke('app:version'),
+
+  // Updates
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateAvailable: (cb: (data: { version: string }) => void) => {
+    const handler = (_: unknown, data: { version: string }) => cb(data)
+    ipcRenderer.on('update:available', handler)
+    return () => ipcRenderer.removeListener('update:available', handler)
+  },
+  onUpdateDownloaded: (cb: (data: { version: string }) => void) => {
+    const handler = (_: unknown, data: { version: string }) => cb(data)
+    ipcRenderer.on('update:downloaded', handler)
+    return () => ipcRenderer.removeListener('update:downloaded', handler)
+  },
+
+  // Reminders
+  remindersGet: () => ipcRenderer.invoke('reminders:get'),
+  remindersSet: (prefs: unknown) => ipcRenderer.invoke('reminders:set', prefs),
+
+  // Export
+  exportData: (payload: { format: 'json' | 'csv' }) =>
+    ipcRenderer.invoke('export:data', payload),
+
+  // Custom foods
+  customFoodCreate: (payload: {
+    name: string; servingG: number; calories: number; proteinG: number; carbsG: number; fatG: number;
+    fiberG?: number; sodiumMg?: number; sugarG?: number
+  }) => ipcRenderer.invoke('customfood:create', payload),
+  customFoodList: () => ipcRenderer.invoke('customfood:list'),
+  customFoodDelete: (payload: { fdcId: number }) => ipcRenderer.invoke('customfood:delete', payload),
+
+  // Saved meals / recipes
+  savedMealList: () => ipcRenderer.invoke('savedmeal:list'),
+  savedMealCreateFromDay: (payload: { name: string; planId: number; meal?: string }) =>
+    ipcRenderer.invoke('savedmeal:createFromDay', payload),
+  savedMealLog: (payload: { planId: number; savedMealId: number; meal: string }) =>
+    ipcRenderer.invoke('savedmeal:log', payload),
+  savedMealDelete: (payload: { id: number }) => ipcRenderer.invoke('savedmeal:delete', payload),
+
+  // Event listeners (return cleanup function)
+  onDownloadProgress: (cb: (data: { dataset: string; percent: number }) => void) => {
+    const handler = (_: unknown, data: { dataset: string; percent: number }) => cb(data)
+    ipcRenderer.on('download:progress', handler)
+    return () => ipcRenderer.removeListener('download:progress', handler)
+  },
+  onAiChunk: (cb: (data: { messageId: string; chunk: string }) => void) => {
+    const handler = (_: unknown, data: { messageId: string; chunk: string }) => cb(data)
+    ipcRenderer.on('ai:chunk', handler)
+    return () => ipcRenderer.removeListener('ai:chunk', handler)
+  },
+  onAiDone: (cb: (data: { messageId: string }) => void) => {
+    const handler = (_: unknown, data: { messageId: string }) => cb(data)
+    ipcRenderer.on('ai:done', handler)
+    return () => ipcRenderer.removeListener('ai:done', handler)
+  },
+  onAiError: (cb: (data: { messageId: string; code: string; message: string }) => void) => {
+    const handler = (_: unknown, data: { messageId: string; code: string; message: string }) => cb(data)
+    ipcRenderer.on('ai:error', handler)
+    return () => ipcRenderer.removeListener('ai:error', handler)
+  }
+})
