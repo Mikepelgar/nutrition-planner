@@ -3,7 +3,8 @@ import { Flame, MessageSquare, Plus, Droplet } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
-import { fmt, todayIso } from '../lib/formatters'
+import { fmt, shiftDate, todayIso } from '../lib/formatters'
+import { computeStreak } from '../../../shared/progress'
 import type { WeightEntry } from '../lib/types'
 import { kgToDisplay, displayToKg, weightUnitLabel, mlToDisplay, volumeUnitLabel, round } from '../lib/units'
 
@@ -93,20 +94,10 @@ export function HomePage({ onNavigate }: Props) {
   // Logging streak: consecutive days (ending today) that have at least one entry.
   useEffect(() => {
     const end = todayIso()
-    const start = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
+    const start = shiftDate(end, -90)
     window.api.logGetDailyLogs({ startDate: start, endDate: end }).then(logs => {
       const logged = new Set(logs.filter(l => l.entryCount > 0).map(l => l.date))
-      let count = 0
-      const d = new Date()
-      // Allow the streak to "hold" if today isn't logged yet but yesterday was.
-      if (!logged.has(end)) d.setDate(d.getDate() - 1)
-      for (;;) {
-        const iso = d.toISOString().slice(0, 10)
-        if (!logged.has(iso)) break
-        count++
-        d.setDate(d.getDate() - 1)
-      }
-      setStreak(count)
+      setStreak(computeStreak(logged, end))
     })
   }, [entries.length])
 

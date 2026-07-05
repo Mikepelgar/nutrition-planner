@@ -5,7 +5,7 @@ import { NutrientPanel } from '../components/nutrients/NutrientPanel'
 import { Skeleton } from '../components/ui/Skeleton'
 import { computeNutrientProgress, NUTRIENT_GROUPS } from '../lib/nutrientProgress'
 import type { NutrientProgressData } from '../lib/types'
-import { fmt, shiftDate, todayIso } from '../lib/formatters'
+import { fmt, localIso, shiftDate, todayIso } from '../lib/formatters'
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -58,7 +58,7 @@ function weekMonday(iso: string): string {
   const date = new Date(y, m - 1, d)
   const day = date.getDay()
   date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day))
-  return date.toISOString().slice(0, 10)
+  return localIso(date)
 }
 
 function daysInMonth(year: number, month: number) {
