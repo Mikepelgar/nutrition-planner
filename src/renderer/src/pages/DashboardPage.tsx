@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
@@ -24,6 +24,7 @@ export function DashboardPage() {
   const nutrients = useNutrientTotals()
   const [foodTab, setFoodTab] = useState<FoodTab>('search')
   const [burned, setBurned] = useState(0)
+  const [showCopy, setShowCopy] = useState(false)
 
   useEffect(() => { loadDay(date) }, [date])
   useEffect(() => { window.api.exerciseCaloriesForDate({ date }).then(r => setBurned(r.calories)) }, [date])
@@ -43,6 +44,7 @@ export function DashboardPage() {
           <button
             onClick={() => loadDay(shiftDate(date, -1))}
             className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+            aria-label="Previous day"
           >
             <ChevronLeft size={16} />
           </button>
@@ -76,29 +78,49 @@ export function DashboardPage() {
           <button
             onClick={() => loadDay(shiftDate(date, 1))}
             className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+            aria-label="Next day"
           >
             <ChevronRight size={16} />
           </button>
         </div>
 
-        {/* Copy a previous day's foods into this day */}
+        {/* Copy a previous day's foods into this day — collapsed by default */}
         <div className="flex items-center gap-2 px-4 py-1.5 border-b border-gray-800 text-xs">
-          <button
-            onClick={() => copyFrom(shiftDate(date, -1))}
-            className="text-gray-500 hover:text-emerald-400 transition-colors"
-            title="Copy the previous day's foods into this day"
-          >
-            ⧉ Copy previous day
-          </button>
-          <span className="text-gray-700">·</span>
-          <label className="text-gray-500 flex items-center gap-1">
-            from
-            <input
-              type="date"
-              onChange={e => e.target.value && copyFrom(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500"
-            />
-          </label>
+          {!showCopy ? (
+            <button
+              onClick={() => setShowCopy(true)}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
+              aria-expanded={false}
+            >
+              <Copy size={12} /> Copy from another day…
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => copyFrom(shiftDate(date, -1))}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
+                title="Copy the previous day's foods into this day"
+              >
+                <Copy size={12} /> Copy previous day
+              </button>
+              <span className="text-gray-700">·</span>
+              <label className="text-gray-500 flex items-center gap-1">
+                from
+                <input
+                  type="date"
+                  onChange={e => e.target.value && copyFrom(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500"
+                />
+              </label>
+              <button
+                onClick={() => setShowCopy(false)}
+                className="ml-auto text-gray-500 hover:text-gray-300"
+                aria-label="Hide copy controls"
+              >
+                <X size={12} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Calorie summary (target includes calories burned via exercise) */}
@@ -168,7 +190,7 @@ export function DashboardPage() {
             </div>
           ))}
           {!loading && entries.length === 0 && (
-            <p className="text-sm text-gray-600 px-4 py-6 text-center">
+            <p className="text-sm text-gray-500 px-4 py-6 text-center">
               No foods added yet.{' '}
               {foodTab === 'search' ? 'Search above to get started.' : 'Tap + on a food above.'}
             </p>
@@ -177,7 +199,7 @@ export function DashboardPage() {
             <div>
               <div className="flex justify-between items-center px-4 py-1.5 bg-gray-900/60 border-b border-gray-800/60">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Logged</span>
-                <span className="text-xs text-gray-600">{fmt(totalCal, 0)} kcal</span>
+                <span className="text-xs text-gray-500">{fmt(totalCal, 0)} kcal</span>
               </div>
               {entries.map(entry => <PlanEntryRow key={entry.id} entry={entry} />)}
             </div>
@@ -189,7 +211,7 @@ export function DashboardPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         <h2 className="text-sm font-semibold text-gray-400 mb-3 px-1">Nutrient Targets</h2>
         {nutrients.length === 0 ? (
-          <p className="text-sm text-gray-600 px-1 py-4 text-center">Add foods to see your nutrient progress.</p>
+          <p className="text-sm text-gray-500 px-1 py-4 text-center">Add foods to see your nutrient progress.</p>
         ) : (
           <NutrientPanel nutrients={nutrients} />
         )}

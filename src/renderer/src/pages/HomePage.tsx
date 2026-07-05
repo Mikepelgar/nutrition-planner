@@ -118,7 +118,7 @@ export function HomePage({ onNavigate }: Props) {
     <div className="h-full overflow-y-auto px-6 py-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-100">Dashboard</h1>
+          <h1 className="text-lg font-semibold text-gray-100">Dashboard</h1>
           <p className="text-sm text-gray-500">Today's overview</p>
         </div>
         <div className="flex items-center gap-1.5 text-amber-400 bg-amber-950/40 px-3 py-1.5 rounded-full">

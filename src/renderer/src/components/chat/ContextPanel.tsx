@@ -85,7 +85,7 @@ export function ContextPanel({ date, mode, style, budgetMode, easyPrepMode }: Pr
           ) : (
             <p className="text-xs text-gray-600">Loading…</p>
           )}
-          <p className="text-[10px] text-gray-700 mt-1.5">
+          <p className="text-[10px] text-gray-500 mt-1.5">
             This exact snapshot (plus your recent messages) is sent with your next question. Nothing else leaves your
             machine.
           </p>

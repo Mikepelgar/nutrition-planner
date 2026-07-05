@@ -106,6 +106,7 @@ export function FoodSearch() {
           <button
             onClick={() => { setQuery(''); setSelectedFood(null) }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+            aria-label="Clear search"
           >
             {loading ? <Spinner size={14} /> : <X size={14} />}
           </button>
@@ -131,7 +132,13 @@ export function FoodSearch() {
               className="flex-1 bg-gray-800 border border-gray-700 text-gray-100 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500"
             />
             <button onClick={handleBarcode} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg transition-colors">Look up</button>
-            <button onClick={() => { setBarcodeMode(false); setBarcodeInput(''); setBarcodeError('') }} className="text-xs text-gray-500 hover:text-gray-300">✕</button>
+            <button
+              onClick={() => { setBarcodeMode(false); setBarcodeInput(''); setBarcodeError('') }}
+              className="text-gray-500 hover:text-gray-300"
+              aria-label="Close barcode input"
+            >
+              <X size={13} />
+            </button>
           </div>
         )}
         {barcodeError && <p className="text-xs text-amber-400 mt-1">{barcodeError}</p>}

@@ -140,7 +140,7 @@ export function RecentFoods({ mode }: Props) {
               {query ? 'No matching foods.' : emptyMsg.primary}
             </p>
             {!query && (
-              <p className="text-xs text-gray-700 mt-0.5">{emptyMsg.secondary}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{emptyMsg.secondary}</p>
             )}
           </div>
         ) : (
@@ -176,7 +176,7 @@ export function RecentFoods({ mode }: Props) {
 
                   {/* Use count (not shown in favorites mode) */}
                   {mode !== 'favorites' && item.useCount > 1 && (
-                    <span className="text-xs text-gray-700 shrink-0">{item.useCount}×</span>
+                    <span className="text-xs text-gray-500 shrink-0">{item.useCount}×</span>
                   )}
 
                   {/* Star / favorite toggle */}
@@ -186,9 +186,10 @@ export function RecentFoods({ mode }: Props) {
                     className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
                       isFav
                         ? 'text-amber-400 hover:text-amber-300'
-                        : 'text-gray-700 hover:text-amber-400'
+                        : 'text-gray-600 hover:text-amber-400'
                     }`}
                     title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                    aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
                   >
                     <Star size={13} fill={isFav ? 'currentColor' : 'none'} />
                   </button>
@@ -205,6 +206,7 @@ export function RecentFoods({ mode }: Props) {
                           : 'bg-gray-800 hover:bg-emerald-600 text-gray-400 hover:text-white'
                     } disabled:cursor-not-allowed`}
                     title={wasAdded ? 'Added!' : 'Add to log'}
+                    aria-label={wasAdded ? 'Added' : 'Add to log'}
                   >
                     {wasAdded ? <Check size={13} /> : <Plus size={13} />}
                   </button>

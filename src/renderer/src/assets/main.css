@@ -19,6 +19,13 @@
     overflow: hidden;
   }
 
+  /* Keyboard focus is visible everywhere; mouse clicks don't trigger
+     :focus-visible, so pointer interactions stay ring-free. */
+  *:focus-visible {
+    outline: 2px solid rgb(16 185 129 / 0.7);
+    outline-offset: 1px;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

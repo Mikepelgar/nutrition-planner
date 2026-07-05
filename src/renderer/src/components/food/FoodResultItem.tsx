@@ -43,6 +43,7 @@ export function FoodResultItem({ food, onClick, disabled, isFavorite, onToggleFa
           isFavorite ? 'text-amber-400 hover:text-amber-300' : 'text-gray-600 hover:text-amber-400'
         }`}
         title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       >
         <Star size={13} fill={isFavorite ? 'currentColor' : 'none'} />
       </button>

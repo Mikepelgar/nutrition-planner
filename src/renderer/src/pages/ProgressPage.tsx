@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Sparkles, Trophy, Target, Flame } from 'lucide-react'
+import { Sparkles, Trophy, Target, Flame, Medal, Lock } from 'lucide-react'
 import { useProfileStore } from '../store/useProfileStore'
 import { useRangeData } from '../hooks/useRangeData'
 import { useAiStream } from '../hooks/useAiStream'
@@ -9,6 +9,7 @@ import { computeStreak, projectTimeToGoal, computeAchievements } from '../../../
 import { kgToDisplay, weightUnitLabel, WATER_GOAL_ML } from '../lib/units'
 import { fmt, todayIso } from '../lib/formatters'
 import { Button } from '../components/ui/Button'
+import { Pill } from '../components/ui/Pill'
 
 const mmdd = (iso: string): string => iso.slice(5).replace('-', '/')
 const RANGES = [
@@ -51,18 +52,12 @@ export function ProgressPage() {
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-100">Progress</h1>
+        <h1 className="text-lg font-semibold text-gray-100">Progress</h1>
         <div className="flex gap-1">
           {RANGES.map((r) => (
-            <button
-              key={r.days}
-              onClick={() => setDays(r.days)}
-              className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                days === r.days ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-              }`}
-            >
+            <Pill key={r.days} active={days === r.days} onClick={() => setDays(r.days)}>
               {r.label}
-            </button>
+            </Pill>
           ))}
         </div>
       </div>
@@ -122,8 +117,9 @@ export function ProgressPage() {
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {achievements.map((a) => (
-            <div key={a.id} className={`rounded-lg px-3 py-2 text-xs border ${a.earned ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-gray-800/50 border-gray-800 text-gray-600'}`}>
-              {a.earned ? '🏅 ' : '🔒 '}{a.label}
+            <div key={a.id} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs border ${a.earned ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-gray-800/50 border-gray-800 text-gray-500'}`}>
+              {a.earned ? <Medal size={12} className="shrink-0" /> : <Lock size={12} className="shrink-0" />}
+              {a.label}
             </div>
           ))}
         </div>
@@ -139,7 +135,7 @@ export function ProgressPage() {
         </div>
         {review.text
           ? <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{review.text}</p>
-          : <p className="text-xs text-gray-600">Get an AI summary of your last 7 days with concrete next steps.</p>}
+          : <p className="text-xs text-gray-500">Get an AI summary of your last 7 days with concrete next steps.</p>}
       </div>
     </div>
   )
