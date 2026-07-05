@@ -238,8 +238,11 @@ targets than the UI.
 
 ## Nutrient Progress Bars
 Three-state algorithm in `lib/nutrientProgress.ts` (normal / over-rdi / excess).
-RDI/UL constants: `main/constants/rdi.ts` (35 nutrients × 8 age/sex brackets).
-Client mirror: inline helpers in `useNutrientTotals.ts` and `LogPage.tsx`.
+RDI/UL constants: **`src/shared/rdi.ts`** (35 nutrients × 8 age/sex brackets),
+re-exported from `main/constants/rdi.ts` for the AI briefing. The renderer
+builds bars via `buildNutrientProgress` (`lib/nutrientProgress.ts`): DRI table
++ the user's macro targets overriding ids 1008/1003/1004/1005 — shared by
+`useNutrientTotals.ts` and `LogPage.tsx`, so the UI and the AI can never drift.
 
 ---
 
@@ -346,13 +349,14 @@ optional `meal`) · `plan:deleteEntry` · `plan:copyDay` · `profile:get` · `pr
 src/
 ├── shared/                      # PURE modules shared by main + renderer (+ *.test.ts)
 │   ├── macros.ts                # BMR/TDEE/diet-aware macro engine + custom targets
+│   ├── rdi.ts                   # DRI table (RDI/UL × 8 age/sex brackets) — single source
 │   ├── progress.ts              # streak, goal time-to-go projection, achievements
 │   ├── aiContext.ts             # CoachContext + all AI prompt/message building
 │   └── aiErrors.ts              # typed AiErrorCode taxonomy + friendly messages
 ├── main/
 │   ├── index.ts                 # bootstrap, security (sandbox/CSP/nav), logging,
 │   │                            #   crash handlers, IPC registration, updater, reminders
-│   ├── constants/{rdi.ts, ai-limits.ts}   # DRI table; built-in model + soft limits
+│   ├── constants/{rdi.ts, ai-limits.ts}   # rdi.ts re-exports shared/rdi; built-in model + soft limits
 │   ├── types/global.d.ts        # declare const __BUILTIN_API_KEY__
 │   ├── db/
 │   │   ├── database.ts          # singleton, auto-sync, inline migrations, daily backup

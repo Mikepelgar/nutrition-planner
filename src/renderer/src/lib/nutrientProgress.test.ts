@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeNutrientProgress } from './nutrientProgress'
+import { buildNutrientProgress, computeNutrientProgress } from './nutrientProgress'
+import { getDRIForProfile } from '../../../shared/rdi'
 
 describe('computeNutrientProgress (3-state algorithm)', () => {
   it('below RDI → normal, primary bar = ratio', () => {
@@ -38,5 +39,43 @@ describe('computeNutrientProgress (3-state algorithm)', () => {
     const r = computeNutrientProgress(10, 0, null)
     expect(r.displayPercent).toBe(0)
     expect(r.state).toBe('normal')
+  })
+})
+
+describe('buildNutrientProgress (shared DRI table + macro overrides)', () => {
+  const profile = { age: 30, sex: 'male' as const }
+  const targets = { calories: 2500, proteinG: 160, carbsG: 280, fatG: 70 }
+
+  it('overrides the four macro rows with the personalized targets', () => {
+    const rows = buildNutrientProgress(new Map(), profile, targets)
+    const byId = new Map(rows.map(r => [r.nutrientId, r]))
+    expect(byId.get(1008)?.rdi).toBe(2500)
+    expect(byId.get(1003)?.rdi).toBe(160)
+    expect(byId.get(1004)?.rdi).toBe(70)
+    expect(byId.get(1005)?.rdi).toBe(280)
+  })
+
+  it('takes micronutrient RDI/UL verbatim from the shared DRI table', () => {
+    const rows = buildNutrientProgress(new Map(), profile, targets)
+    const byId = new Map(rows.map(r => [r.nutrientId, r]))
+    for (const dri of getDRIForProfile(profile.age, profile.sex)) {
+      if ([1008, 1003, 1004, 1005].includes(dri.nutrientId)) continue
+      expect(byId.get(dri.nutrientId)?.rdi).toBe(dri.rdi)
+      expect(byId.get(dri.nutrientId)?.ul).toBe(dri.ul)
+      expect(byId.get(dri.nutrientId)?.name).toBe(dri.name)
+    }
+  })
+
+  it('applies intakes and the progress algorithm', () => {
+    const rows = buildNutrientProgress(new Map([[1162, 45]]), profile, targets) // Vit C, RDI 90
+    const vitC = rows.find(r => r.nutrientId === 1162)!
+    expect(vitC.intake).toBe(45)
+    expect(vitC.displayPercent).toBe(50)
+    expect(vitC.state).toBe('normal')
+  })
+
+  it('missing intakes default to zero', () => {
+    const rows = buildNutrientProgress(new Map(), profile, targets)
+    expect(rows.every(r => r.intake === 0)).toBe(true)
   })
 })

@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useProfileStore } from '../store/useProfileStore'
 import { NutrientPanel } from '../components/nutrients/NutrientPanel'
 import { Skeleton } from '../components/ui/Skeleton'
-import { computeNutrientProgress, NUTRIENT_GROUPS } from '../lib/nutrientProgress'
+import { buildNutrientProgress } from '../lib/nutrientProgress'
 import type { NutrientProgressData } from '../lib/types'
 import { fmt, localIso, shiftDate, todayIso } from '../lib/formatters'
 
@@ -230,66 +230,6 @@ function buildYearlyItems(entries: DailyEntry[]): LogItem[] {
     })
 }
 
-// ─── RDI helpers (mirrors useNutrientTotals logic) ───────────────────────────
-
-function getRdi(id: number, profile: { sex: string; age: number }, macroTargets: { calories: number; proteinG: number; fatG: number; carbsG: number }): number {
-  if (id === 1008) return macroTargets.calories
-  if (id === 1003) return macroTargets.proteinG
-  if (id === 1004) return macroTargets.fatG
-  if (id === 1005) return macroTargets.carbsG
-  const male = profile.sex === 'male'
-  const age = profile.age
-  const t: Record<number, number> = {
-    1079: male ? 38 : 25, 2000: 50, 1258: 20, 1257: 2, 1253: 300, 1293: male ? 17 : 12,
-    1162: male ? 90 : 75, 1106: male ? 900 : 700, 1114: 15, 1109: 15, 1185: male ? 120 : 90,
-    1165: male ? 1.2 : 1.1, 1166: male ? 1.3 : 1.1, 1167: male ? 16 : 14,
-    1175: age > 50 ? (male ? 1.7 : 1.5) : 1.3, 1177: 400, 1178: 2.4, 1176: 30, 1170: 5,
-    1180: male ? 550 : 425, 1087: age > 50 ? 1200 : 1000,
-    1089: male ? 8 : (age > 50 ? 8 : 18),
-    1090: male ? (age > 30 ? 420 : 400) : (age > 30 ? 320 : 310),
-    1091: 700, 1095: male ? 11 : 8, 1098: 0.9, 1101: male ? 2.3 : 1.8, 1103: 55,
-    1093: 1500, 1092: male ? 3400 : 2600
-  }
-  return t[id] ?? 0
-}
-
-function getUl(id: number): number | null {
-  const u: Record<number, number> = {
-    1162: 2000, 1106: 3000, 1114: 100, 1109: 1000, 1167: 35, 1175: 100, 1177: 1000,
-    1087: 2500, 1089: 45, 1090: 350, 1091: 4000, 1095: 40, 1098: 10, 1101: 11,
-    1103: 400, 1093: 2300, 1180: 3500
-  }
-  return u[id] ?? null
-}
-
-const ALL_NUTRIENT_IDS = new Set(NUTRIENT_GROUPS.flatMap(g => g.nutrientIds))
-
-function toProgressData(
-  breakdown: NutrientBreak[],
-  profile: { sex: string; age: number },
-  macroTargets: { calories: number; proteinG: number; fatG: number; carbsG: number }
-): NutrientProgressData[] {
-  const intakeMap = new Map(breakdown.map(b => [b.nutrientId, b.dailyAvg]))
-  return [...ALL_NUTRIENT_IDS]
-    .map(nutrientId => {
-      const rdi = getRdi(nutrientId, profile, macroTargets)
-      if (rdi === 0) return null
-      const ul = getUl(nutrientId)
-      const intake = intakeMap.get(nutrientId) ?? 0
-      const meta = breakdown.find(b => b.nutrientId === nutrientId)
-      return {
-        nutrientId,
-        name: meta?.name ?? `Nutrient ${nutrientId}`,
-        unit: meta?.unit ?? '',
-        intake,
-        rdi,
-        ul,
-        ...computeNutrientProgress(intake, rdi, ul)
-      } as NutrientProgressData
-    })
-    .filter((n): n is NutrientProgressData => n !== null)
-}
-
 // ─── sub-item row ─────────────────────────────────────────────────────────────
 
 function SubRow({ item, calTarget }: { item: SubItem; calTarget: number }) {
@@ -468,7 +408,8 @@ export function LogPage() {
 
     window.api.logGetNutrientBreakdown({ startDate: item.startDate, endDate: item.endDate })
       .then(breakdown => {
-        const progressData = toProgressData(breakdown as NutrientBreak[], profile, macroTargets)
+        const intakes = new Map((breakdown as NutrientBreak[]).map(b => [b.nutrientId, b.dailyAvg]))
+        const progressData = buildNutrientProgress(intakes, profile, macroTargets)
         setNutrientCache(prev => new Map(prev).set(item.key, progressData))
         setLoadingNutrients(false)
       })
