@@ -41,8 +41,10 @@ export function registerPlanIPC(): void {
     servingUnit: ServingUnit
     servingAmount: number
     grams: number
+    meal?: MealType
   }) => {
-    return updatePlanEntry(getDb(), payload)
+    const meal = payload.meal != null ? asEnum(payload.meal, 'meal', MEALS) : undefined
+    return updatePlanEntry(getDb(), { ...payload, meal })
   })
 
   ipcMain.handle('plan:deleteEntry', (_event, payload: { entryId: number }) => {
@@ -55,14 +57,6 @@ export function registerPlanIPC(): void {
     const source = getOrCreatePlan(db, asDate(payload?.sourceDate, 'sourceDate'))
     const target = getOrCreatePlan(db, asDate(payload?.targetDate, 'targetDate'))
     copyEntries(db, source.id, target.id)
-    return { success: true }
-  })
-
-  ipcMain.handle('plan:copyMeal', (_event, payload: { sourceDate: string; meal: MealType; targetDate: string }) => {
-    const db = getDb()
-    const source = getOrCreatePlan(db, asDate(payload?.sourceDate, 'sourceDate'))
-    const target = getOrCreatePlan(db, asDate(payload?.targetDate, 'targetDate'))
-    copyEntries(db, source.id, target.id, asEnum(payload?.meal, 'meal', MEALS))
     return { success: true }
   })
 }

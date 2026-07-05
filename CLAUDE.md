@@ -1,7 +1,7 @@
 # Nutrition Planner — Project Checkpoint
 
 Desktop nutrition tracking app built with Electron + React + TypeScript + SQLite.
-Log daily food intake (meals, custom foods, recipes, barcode), track macros + 35
+Log daily food intake (search, history, favorites, barcode), track macros + 35
 micronutrients against personalized targets, log exercise/weight/water, see trend
 charts and goal projections, plan meals, and get context-aware AI coaching from any
 major provider — all stored locally on the user's machine.
@@ -139,8 +139,8 @@ favorite_food   -- user-starred foods (fdc_id UNIQUE, serving, grams, created_at
 weight_log      -- (id, date UNIQUE, weight_kg, created_at)
 water_log       -- (id, date UNIQUE, ml, updated_at)
 exercise        -- (id, date, name, calories_burned, duration_min, created_at); idx on date
-saved_meal      -- recipes (id, name, created_at)
-saved_meal_item -- (id, saved_meal_id FK CASCADE, fdc_id, food_description, serving_unit, serving_amount, grams)
+saved_meal      -- LEGACY (feature removed 2026-07; table kept, nothing reads it)
+saved_meal_item -- LEGACY (as above)
 
 settings        -- key/value store. Keys in use:
   -- ai_provider, {provider}_api_key (encrypted via safeStorage), ai_model
@@ -201,30 +201,36 @@ targets than the UI.
 - **Calorie fallback:** `getFoodDetail` injects a synthetic nutrient 1008 from macros
   (`p×4 + c×4 + f×9`) when energy is missing; `CAL_SUBQUERY` mirrors it in search.
 - **Barcode lookup:** `findFoodByBarcode(upc)` → `food.gtin_upc` → `getFoodDetail`.
-  Search tab has an "Enter a barcode" input → opens `ServingPicker` or offers custom food.
-- **Custom foods** (`db/queries/customFood.queries.ts`): stored as `food` +
-  `food_nutrient` rows with `data_type='custom_food'` and a **negative `fdc_id`**
-  (USDA ids are positive). The insert trigger indexes them in FTS automatically;
-  delete maintains FTS via the external-content `'delete'` command and is blocked if
-  the food is referenced by `plan_entry`. Managed in the Add page **"My foods"** tab.
+  Search tab has an "Enter a barcode" input → opens `ServingPicker` (or a plain
+  "not found" notice).
+- **Favorites:** `useFavoritesStore` (zustand) is the single source of truth for
+  starred ids — Search results, History, and Faves all render stars from it, so a
+  toggle anywhere reflects everywhere instantly. `favorite_food` keyed by `fdc_id`.
+- **Custom foods (REMOVED as a feature, 2026-07):** the create/manage UI, IPC
+  (`customfood:*`), and queries were deleted. Rows with `data_type='custom_food'`
+  (negative `fdc_id`) may still exist in user DBs — the search `data_type` filter
+  still includes `'custom_food'` so they stay searchable and logged days keep working.
 - USDA popularity tiers (800 foundation / 700 primary cuts / 600 secondary / 300
   neutral / 50 niche). `node scripts/fix-usda-scores.mjs` reapplies.
 
-### Recipes / Saved Meals & Copy Day
-- `saved_meal` + `saved_meal_item` (`db/queries/savedMeal.queries.ts`): snapshot a
-  day's meal section as a recipe; **log it** expands into `plan_entry` rows under the
-  active meal. UI: Add page **"Meals"** tab + "Save as meal" on meal headers.
-- **Copy day/meal:** `plan.queries.copyEntries` + `plan:copyDay`/`plan:copyMeal`;
-  the Add page has a "Copy previous day / from [date]" control.
+### Copy Day
+- `plan.queries.copyEntries` + `plan:copyDay`; the Add page has a "Copy previous
+  day / from [date]" control.
+- **Saved meals / recipes (REMOVED as a feature, 2026-07):** UI, IPC (`savedmeal:*`),
+  and queries deleted; the `saved_meal`/`saved_meal_item` tables remain in the schema
+  (migrations are additive-only) but nothing reads them.
 
 ---
 
 ## Serving Units, Meals & Display Units
 - `getSmartDefault(food)` / `normalizeSizeUnit` / `toGrams` in `lib/unitConversion.ts`
   (egg→50g, liquids→1 cup, protein→4 oz, branded→label serving, else 100g).
-- **Meal sections:** the plan store tracks an `activeMeal` (default by time of day);
-  new foods are tagged with it; the Add page groups entries by Breakfast/Lunch/
-  Dinner/Snacks with per-meal calorie subtotals.
+- **Meal labels (demoted from sections, 2026-07):** the Add page shows ONE flat
+  logged list — no meal grouping, no "Add to:" selector. New entries silently get a
+  time-of-day default (`defaultMeal()` in `usePlanStore`); the label is editable via
+  small pills inside the entry's expanded editor (`plan:updateEntry` accepts optional
+  `meal`) and shows as a muted word in the entry subline. The `plan_entry.meal`
+  column and `MealType` are unchanged; the AI context still receives per-item meals.
 - **Units (`lib/units.ts`):** `unit_system` preference converts **display only** —
   weight kg↔lb, height cm↔ft/in, water ml↔fl oz. Macros/calories stay g/kcal.
 
@@ -284,7 +290,7 @@ at configured meal times and a water interval (8am–9pm). Prefs stored as the
 | Tab | Icon | Description |
 |---|---|---|
 | Dashboard | LayoutDashboard | Today overview: calorie ring, macros, top gaps, water, weight, streak, quick actions |
-| Add | CalendarDays | Daily food log for any date; meal sections; copy-day |
+| Add | CalendarDays | Daily food log for any date; one flat logged list; copy-day |
 | History | BarChart2 | `LogPage` — Daily/Weekly/Monthly/Yearly with expandable nutrient breakdown |
 | Progress | TrendingUp | Trend charts + goal projection + achievements + weekly AI review |
 | Exercise | Dumbbell | Log workouts (MET-based kcal) that add to the calorie budget |
@@ -298,9 +304,9 @@ at configured meal times and a water interval (8am–9pm). Prefs stored as the
 > form is `components/profile/ProfileForm.tsx`).
 
 ### Add Page — food sub-tabs
-**Search** (FTS) · **Recent** (14d) · **Previous** (all-time) · **★ Faves** ·
-**My foods** (custom foods) · **Meals** (saved recipes). Plus an "Add to:" meal
-selector and a barcode input.
+**Search** (FTS, with ★ toggles on every result) · **History** (all-time, most
+recent first) · **★ Faves**. Plus a barcode input. Logged entries render as one
+flat list; the optional meal label lives inside each entry's expanded editor.
 
 ### Dashboard / Progress / Planner specifics
 - **Dashboard** (`HomePage.tsx`): calorie ring (`remaining = target + exerciseKcal −
@@ -318,13 +324,12 @@ selector and a barcode input.
 
 **Renderer → Main** (`ipcRenderer.invoke`):
 `food:search` · `food:detail` · `food:byBarcode` · `plan:getOrCreate` ·
-`plan:getEntries` · `plan:addEntry` (incl. `meal`) · `plan:updateEntry` ·
-`plan:deleteEntry` · `plan:copyDay` · `plan:copyMeal` · `profile:get` · `profile:save` ·
+`plan:getEntries` · `plan:addEntry` (incl. `meal`) · `plan:updateEntry` (incl.
+optional `meal`) · `plan:deleteEntry` · `plan:copyDay` · `profile:get` · `profile:save` ·
 `log:getDailyLogs` · `log:getNutrientBreakdown` · `quickadd:getRecent` ·
 `favorites:get|getIds|toggle` · `ai:startStream` · `ai:cancelStream` · `ai:saveKey` ·
-`ai:setKeySource` · `ai:hasKey` · `ai:weeklyReview` · `ai:planDay` ·
+`ai:setKeySource` · `ai:hasKey` · `ai:getContext` · `ai:weeklyReview` · `ai:planDay` ·
 `weight:set|getRange|latest` · `water:get|getRange|add` ·
-`customfood:create|list|delete` · `savedmeal:list|createFromDay|log|delete` ·
 `exercise:add|getForDate|delete|caloriesForDate|getRange` · `reminders:get|set` ·
 `export:data` · `app:version` · `update:check|install`
 
@@ -341,7 +346,9 @@ selector and a barcode input.
 src/
 ├── shared/                      # PURE modules shared by main + renderer (+ *.test.ts)
 │   ├── macros.ts                # BMR/TDEE/diet-aware macro engine + custom targets
-│   └── progress.ts              # streak, goal time-to-go projection, achievements
+│   ├── progress.ts              # streak, goal time-to-go projection, achievements
+│   ├── aiContext.ts             # CoachContext + all AI prompt/message building
+│   └── aiErrors.ts              # typed AiErrorCode taxonomy + friendly messages
 ├── main/
 │   ├── index.ts                 # bootstrap, security (sandbox/CSP/nav), logging,
 │   │                            #   crash handlers, IPC registration, updater, reminders
@@ -352,13 +359,13 @@ src/
 │   │   ├── settings.helpers.ts  # get/set + encrypt/decrypt (safeStorage)
 │   │   ├── migrations/{001_schema.sql, 002_fts.sql}
 │   │   └── queries/{food, plan, profile, nutrient, log, quickadd, favorites,
-│   │                 customFood, savedMeal, tracking, exercise}.queries.ts
+│   │                 tracking, exercise}.queries.ts
 │   ├── ipc/
-│   │   ├── {food, plan, profile, ai, log, quickadd, favorites, customfood,
-│   │   │    savedmeal, tracking, exercise, reminders, export}.ipc.ts
+│   │   ├── {food, plan, profile, ai, log, quickadd, favorites,
+│   │   │    tracking, exercise, reminders, export}.ipc.ts
 │   │   └── validate.ts          # IPC input guards
 │   └── services/
-│       ├── ai.service.ts        # streamChat + chat / weeklyReview / mealPlan; prompt builders
+│       ├── ai.service.ts        # transport-only streamChat + error mapping + key checks
 │       ├── ai-usage.service.ts  # built-in key daily/monthly usage (check + consume)
 │       ├── tdee.service.ts      # re-exports shared/macros
 │       ├── reminders.service.ts # notification scheduler
@@ -369,7 +376,7 @@ src/
     ├── main.tsx                 # root ErrorBoundary + window error handlers
     ├── pages/
     │   ├── HomePage.tsx         # Dashboard
-    │   ├── DashboardPage.tsx    # the "Add" tab (food log; meal sections; copy-day)
+    │   ├── DashboardPage.tsx    # the "Add" tab (flat food log; copy-day)
     │   ├── LogPage.tsx          # History
     │   ├── ProgressPage.tsx     # trends/goals/achievements/weekly AI
     │   ├── ExercisePage.tsx     # activity logging (MET presets)
@@ -378,15 +385,14 @@ src/
     │   └── SettingsPage.tsx     # profile+diet+restrictions+targets+AI+reminders+data+about
     ├── components/
     │   ├── profile/ProfileForm.tsx     # shared by onboarding + Settings
-    │   ├── food/{FoodSearch, FoodResultItem, ServingPicker, RecentFoods,
-    │   │         CustomFoods, CustomFoodForm, SavedMeals}.tsx
+    │   ├── food/{FoodSearch, FoodResultItem, ServingPicker, RecentFoods}.tsx
     │   ├── charts/{LineChart, BarChart}.tsx
     │   ├── nutrients/{NutrientPanel, NutrientBar}.tsx
-    │   ├── plan/PlanEntry.tsx
-    │   ├── chat/ChatMessage.tsx
+    │   ├── plan/PlanEntry.tsx          # entry row + serving editor + meal tag pills
+    │   ├── chat/{ChatMessage, ContextPanel}.tsx   # ContextPanel = "what the AI can see"
     │   └── ui/{Button, Input, Select, Spinner, Skeleton, ErrorBoundary}.tsx
     ├── hooks/{useFoodSearch, useNutrientTotals, useRangeData, useAiStream}.ts
-    ├── store/{usePlanStore, useProfileStore, useChatStore}.ts
+    ├── store/{usePlanStore, useProfileStore, useChatStore, useFavoritesStore}.ts
     └── lib/{types, unitConversion, units, nutrientProgress, formatters}.ts
 ```
 
@@ -425,7 +431,8 @@ better-sqlite3; excludes `resources/usda-raw/**` and `.env`; NSIS one-click inst
 
 ## What's Complete
 - ~2M-food USDA + branded data, FTS5 search, calorie fallback, popularity scoring
-- Custom foods, recipes/saved meals, barcode lookup, copy-day, meal sections
+- Barcode lookup, copy-day, flat food log with optional per-entry meal tags,
+  reliable favorites (shared store; ★ in search/history/faves)
 - Diet types + allergens/avoid-foods, units (metric/imperial), custom or formula targets
 - Dashboard, History, **Progress** (charts/goals/achievements/weekly-AI), **Exercise**
   (budget-aware), **Planner** (AI day-plan)

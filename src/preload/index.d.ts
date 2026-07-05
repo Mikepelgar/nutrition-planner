@@ -42,10 +42,10 @@ declare global {
         servingUnit: ServingUnit
         servingAmount: number
         grams: number
+        meal?: MealType
       }): Promise<PlanEntry>
       planDeleteEntry(payload: { entryId: number }): Promise<{ success: boolean }>
       planCopyDay(payload: { sourceDate: string; targetDate: string }): Promise<{ success: boolean }>
-      planCopyMeal(payload: { sourceDate: string; meal: MealType; targetDate: string }): Promise<{ success: boolean }>
 
       profileGet(): Promise<UserProfile | null>
       profileSave(profile: UserProfile): Promise<UserProfile>
@@ -118,18 +118,6 @@ declare global {
       remindersSet(prefs: ReminderPrefs): Promise<{ success: boolean }>
 
       exportData(payload: { format: 'json' | 'csv' }): Promise<{ success: boolean; path?: string }>
-
-      customFoodCreate(payload: {
-        name: string; servingG: number; calories: number; proteinG: number; carbsG: number; fatG: number
-        fiberG?: number; sodiumMg?: number; sugarG?: number
-      }): Promise<{ fdcId: number }>
-      customFoodList(): Promise<Array<{ fdcId: number; description: string; servingG: number; caloriesPerServing: number }>>
-      customFoodDelete(payload: { fdcId: number }): Promise<{ success: boolean; reason?: string }>
-
-      savedMealList(): Promise<Array<{ id: number; name: string; itemCount: number; calories: number }>>
-      savedMealCreateFromDay(payload: { name: string; planId: number; meal?: MealType }): Promise<{ id: number }>
-      savedMealLog(payload: { planId: number; savedMealId: number; meal: MealType }): Promise<{ success: boolean }>
-      savedMealDelete(payload: { id: number }): Promise<{ success: boolean }>
 
       onDownloadProgress(cb: (data: { dataset: string; percent: number }) => void): () => void
       onAiChunk(cb: (data: { messageId: string; chunk: string }) => void): () => void

@@ -12,8 +12,6 @@ import { registerQuickAddIPC } from './ipc/quickadd.ipc'
 import { registerFavoritesIPC } from './ipc/favorites.ipc'
 import { registerTrackingIPC } from './ipc/tracking.ipc'
 import { registerExportIPC } from './ipc/export.ipc'
-import { registerCustomFoodIPC } from './ipc/customfood.ipc'
-import { registerSavedMealIPC } from './ipc/savedmeal.ipc'
 import { registerExerciseIPC } from './ipc/exercise.ipc'
 import { registerRemindersIPC } from './ipc/reminders.ipc'
 import { startReminders } from './services/reminders.service'
@@ -151,8 +149,6 @@ app.whenReady().then(() => {
   registerFavoritesIPC()
   registerTrackingIPC()
   registerExportIPC()
-  registerCustomFoodIPC()
-  registerSavedMealIPC()
   registerExerciseIPC()
   registerRemindersIPC()
   ipcMain.handle('app:version', () => app.getVersion())
