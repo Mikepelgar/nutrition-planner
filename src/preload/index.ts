@@ -16,14 +16,12 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('plan:getEntries', payload),
   planAddEntry: (payload: { planId: number; fdcId: number; servingUnit: string; servingAmount: number; grams: number; meal?: string }) =>
     ipcRenderer.invoke('plan:addEntry', payload),
-  planUpdateEntry: (payload: { entryId: number; servingUnit: string; servingAmount: number; grams: number }) =>
+  planUpdateEntry: (payload: { entryId: number; servingUnit: string; servingAmount: number; grams: number; meal?: string }) =>
     ipcRenderer.invoke('plan:updateEntry', payload),
   planDeleteEntry: (payload: { entryId: number }) =>
     ipcRenderer.invoke('plan:deleteEntry', payload),
   planCopyDay: (payload: { sourceDate: string; targetDate: string }) =>
     ipcRenderer.invoke('plan:copyDay', payload),
-  planCopyMeal: (payload: { sourceDate: string; meal: string; targetDate: string }) =>
-    ipcRenderer.invoke('plan:copyMeal', payload),
 
   // Profile
   profileGet: () =>
@@ -127,28 +125,7 @@ contextBridge.exposeInMainWorld('api', {
   exportData: (payload: { format: 'json' | 'csv' }) =>
     ipcRenderer.invoke('export:data', payload),
 
-  // Custom foods
-  customFoodCreate: (payload: {
-    name: string; servingG: number; calories: number; proteinG: number; carbsG: number; fatG: number;
-    fiberG?: number; sodiumMg?: number; sugarG?: number
-  }) => ipcRenderer.invoke('customfood:create', payload),
-  customFoodList: () => ipcRenderer.invoke('customfood:list'),
-  customFoodDelete: (payload: { fdcId: number }) => ipcRenderer.invoke('customfood:delete', payload),
-
-  // Saved meals / recipes
-  savedMealList: () => ipcRenderer.invoke('savedmeal:list'),
-  savedMealCreateFromDay: (payload: { name: string; planId: number; meal?: string }) =>
-    ipcRenderer.invoke('savedmeal:createFromDay', payload),
-  savedMealLog: (payload: { planId: number; savedMealId: number; meal: string }) =>
-    ipcRenderer.invoke('savedmeal:log', payload),
-  savedMealDelete: (payload: { id: number }) => ipcRenderer.invoke('savedmeal:delete', payload),
-
   // Event listeners (return cleanup function)
-  onDownloadProgress: (cb: (data: { dataset: string; percent: number }) => void) => {
-    const handler = (_: unknown, data: { dataset: string; percent: number }) => cb(data)
-    ipcRenderer.on('download:progress', handler)
-    return () => ipcRenderer.removeListener('download:progress', handler)
-  },
   onAiChunk: (cb: (data: { messageId: string; chunk: string }) => void) => {
     const handler = (_: unknown, data: { messageId: string; chunk: string }) => cb(data)
     ipcRenderer.on('ai:chunk', handler)

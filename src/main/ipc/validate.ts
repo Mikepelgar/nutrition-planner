@@ -40,3 +40,6 @@ export function asDate(v: unknown, field: string): string {
 }
 
 export const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const
+
+/** Runtime mirror of the renderer's ServingUnit union (types are erased at the boundary). */
+export const SERVING_UNITS = ['g', 'kg', 'oz', 'lb', 'ml', 'l', 'fl_oz', 'cup', 'tbsp', 'tsp', 'serving'] as const

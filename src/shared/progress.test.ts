@@ -1,24 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeStreak, projectTimeToGoal, computeAchievements } from './progress'
+import { projectTimeToGoal, computeAchievements } from './progress'
 import type { WeightEntry } from '../renderer/src/lib/types'
-
-describe('computeStreak', () => {
-  it('counts consecutive days ending today', () => {
-    const set = new Set(['2026-06-10', '2026-06-09', '2026-06-08'])
-    expect(computeStreak(set, '2026-06-10')).toBe(3)
-  })
-  it('holds if today not logged but yesterday is', () => {
-    const set = new Set(['2026-06-09', '2026-06-08'])
-    expect(computeStreak(set, '2026-06-10')).toBe(2)
-  })
-  it('breaks on a gap', () => {
-    const set = new Set(['2026-06-10', '2026-06-08'])
-    expect(computeStreak(set, '2026-06-10')).toBe(1)
-  })
-  it('zero when nothing logged', () => {
-    expect(computeStreak(new Set(), '2026-06-10')).toBe(0)
-  })
-})
 
 describe('projectTimeToGoal', () => {
   const w = (date: string, weightKg: number): WeightEntry => ({ date, weightKg })
@@ -42,12 +24,10 @@ describe('projectTimeToGoal', () => {
 
 describe('computeAchievements', () => {
   it('earns based on thresholds', () => {
-    const a = computeAchievements({ foodsLogged: 100, weighIns: 3, streak: 8, daysOnTarget: 1 })
+    const a = computeAchievements({ foodsLogged: 100, weighIns: 3, daysOnTarget: 1 })
     const earned = new Set(a.filter((x) => x.earned).map((x) => x.id))
     expect(earned.has('first_food')).toBe(true)
     expect(earned.has('foods_100')).toBe(true)
-    expect(earned.has('streak_7')).toBe(true)
-    expect(earned.has('streak_30')).toBe(false)
     expect(earned.has('weighins_10')).toBe(false)
   })
 })

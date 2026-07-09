@@ -33,7 +33,11 @@ const KEY_MONTH = 'builtin_usage_month'
 const KEY_MONTHLY_COUNT = 'builtin_usage_monthly_count'
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
+  // Local date, so the daily quota rolls over at the user's midnight (not UTC's).
+  const d = new Date()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${m}-${day}` // 'YYYY-MM-DD'
 }
 
 function monthStr(): string {

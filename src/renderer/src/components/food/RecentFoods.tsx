@@ -1,32 +1,24 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, Plus, Check, Flame, Star } from 'lucide-react'
 import { usePlanStore } from '../../store/usePlanStore'
+import { useFavoritesStore } from '../../store/useFavoritesStore'
 import { Skeleton } from '../ui/Skeleton'
-import { fmt, shiftDate, todayIso } from '../../lib/formatters'
+import { fmt } from '../../lib/formatters'
 import { SERVING_UNIT_LABELS } from '../../lib/unitConversion'
 import type { ServingUnit } from '../../lib/types'
 
-export type FoodHistoryMode = 'recent' | 'previous' | 'favorites'
+export type FoodHistoryMode = 'history' | 'favorites'
 
-interface HistoryItem {
-  fdcId: number
-  foodDescription: string
-  servingUnit: string
-  servingAmount: number
-  grams: number
-  caloriesPer100g: number | null
-  useCount: number
-  lastUsed: string
-}
+/** Row shape shared by both endpoints — see QuickAddItem (main/db/queries/quickadd.queries). */
+type HistoryItem = Awaited<ReturnType<typeof window.api.quickAddGetRecent>>[number]
 
 function itemKey(item: HistoryItem) {
   return `${item.fdcId}__${item.servingUnit}__${item.servingAmount}`
 }
 
 const EMPTY_MSG: Record<FoodHistoryMode, { primary: string; secondary: string }> = {
-  recent:    { primary: 'No foods logged in the last 2 weeks.', secondary: 'Log food in Add to see it here.' },
-  previous:  { primary: 'No foods logged yet.',                 secondary: 'Log food in Add to see it here.' },
-  favorites: { primary: 'No favorites yet.',                    secondary: 'Tap ★ on any food to save it here.' },
+  history:   { primary: 'No foods logged yet.', secondary: 'Foods you log will show up here.' },
+  favorites: { primary: 'No favorites yet.',    secondary: 'Tap ★ on any food to save it here.' }
 }
 
 interface Props {
@@ -35,39 +27,29 @@ interface Props {
 
 export function RecentFoods({ mode }: Props) {
   const { addEntry } = usePlanStore()
+  const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavorite } = useFavoritesStore()
   const [items, setItems] = useState<HistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
   const [added, setAdded] = useState<Set<string>>(new Set())
-  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set())
   const [togglingFav, setTogglingFav] = useState<number | null>(null)
+  const [error, setError] = useState('')
 
-  // Reload list + favorite IDs whenever mode changes
   useEffect(() => {
     setLoading(true)
     setQuery('')
+    setError('')
 
-    const loadFavIds = window.api.favoritesGetIds().then(ids => {
-      setFavoriteIds(new Set(ids as number[]))
-    })
+    const loadItems =
+      mode === 'favorites'
+        ? window.api.favoritesGet().then(setItems)
+        : window.api.quickAddGetRecent({}).then(setItems)
 
-    let loadItems: Promise<void>
-    if (mode === 'favorites') {
-      loadItems = window.api.favoritesGet().then(data => {
-        setItems(data as HistoryItem[])
-      })
-    } else {
-      const cutoffDate = mode === 'recent'
-        ? shiftDate(todayIso(), -13)   // last 14 days
-        : undefined
-      loadItems = window.api.quickAddGetRecent({ cutoffDate }).then(data => {
-        setItems(data as HistoryItem[])
-      })
-    }
-
-    Promise.all([loadFavIds, loadItems]).then(() => setLoading(false))
-  }, [mode])
+    Promise.all([loadFavorites(), loadItems])
+      .catch(() => setError('Could not load foods. Switch tabs to retry.'))
+      .finally(() => setLoading(false))
+  }, [mode, loadFavorites])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -78,6 +60,7 @@ export function RecentFoods({ mode }: Props) {
     const key = itemKey(item)
     if (adding) return
     setAdding(key)
+    setError('')
     try {
       const food = await window.api.foodDetail({ fdcId: item.fdcId })
       if (food) {
@@ -85,6 +68,8 @@ export function RecentFoods({ mode }: Props) {
         setAdded(prev => new Set(prev).add(key))
         setTimeout(() => setAdded(prev => { const n = new Set(prev); n.delete(key); return n }), 2000)
       }
+    } catch {
+      setError("Couldn't add that food. Please try again.")
     } finally {
       setAdding(null)
     }
@@ -94,21 +79,14 @@ export function RecentFoods({ mode }: Props) {
     if (togglingFav !== null) return
     setTogglingFav(item.fdcId)
     try {
-      const result = await window.api.favoritesToggle({
+      const isFavorite = await toggleFavorite({
         fdcId: item.fdcId,
         foodDescription: item.foodDescription,
         servingUnit: item.servingUnit,
         servingAmount: item.servingAmount,
         grams: item.grams
       })
-      const { isFavorite } = result as { isFavorite: boolean }
-      setFavoriteIds(prev => {
-        const next = new Set(prev)
-        if (isFavorite) next.add(item.fdcId)
-        else next.delete(item.fdcId)
-        return next
-      })
-      // Remove from favorites list if we're in favorites mode and just unstarred
+      // Remove from the favorites list if we're in favorites mode and just unstarred
       if (mode === 'favorites' && !isFavorite) {
         setItems(prev => prev.filter(i => i.fdcId !== item.fdcId))
       }
@@ -152,6 +130,8 @@ export function RecentFoods({ mode }: Props) {
         </div>
       </div>
 
+      {error && <p className="text-xs text-amber-400 px-4 py-1.5">{error}</p>}
+
       {/* List */}
       <div className="overflow-y-auto max-h-56">
         {filtered.length === 0 ? (
@@ -160,7 +140,7 @@ export function RecentFoods({ mode }: Props) {
               {query ? 'No matching foods.' : emptyMsg.primary}
             </p>
             {!query && (
-              <p className="text-xs text-gray-700 mt-0.5">{emptyMsg.secondary}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{emptyMsg.secondary}</p>
             )}
           </div>
         ) : (
@@ -196,7 +176,7 @@ export function RecentFoods({ mode }: Props) {
 
                   {/* Use count (not shown in favorites mode) */}
                   {mode !== 'favorites' && item.useCount > 1 && (
-                    <span className="text-xs text-gray-700 shrink-0">{item.useCount}×</span>
+                    <span className="text-xs text-gray-500 shrink-0">{item.useCount}×</span>
                   )}
 
                   {/* Star / favorite toggle */}
@@ -206,9 +186,10 @@ export function RecentFoods({ mode }: Props) {
                     className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
                       isFav
                         ? 'text-amber-400 hover:text-amber-300'
-                        : 'text-gray-700 hover:text-amber-400'
+                        : 'text-gray-600 hover:text-amber-400'
                     }`}
                     title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                    aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
                   >
                     <Star size={13} fill={isFav ? 'currentColor' : 'none'} />
                   </button>
@@ -225,6 +206,7 @@ export function RecentFoods({ mode }: Props) {
                           : 'bg-gray-800 hover:bg-emerald-600 text-gray-400 hover:text-white'
                     } disabled:cursor-not-allowed`}
                     title={wasAdded ? 'Added!' : 'Add to log'}
+                    aria-label={wasAdded ? 'Added' : 'Add to log'}
                   >
                     {wasAdded ? <Check size={13} /> : <Plus size={13} />}
                   </button>

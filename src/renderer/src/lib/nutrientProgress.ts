@@ -1,4 +1,5 @@
-import type { NutrientProgressData } from './types'
+import type { MacroTargets, NutrientProgressData, Sex } from './types'
+import { getDRIForProfile } from '../../../shared/rdi'
 
 export function computeNutrientProgress(
   intake: number,
@@ -29,6 +30,39 @@ export function computeNutrientProgress(
     secondaryBarPercent: Math.min(overRdiRatio * 100, 100),
     displayPercent
   }
+}
+
+/**
+ * Full progress-bar dataset for a profile: the shared DRI table provides the
+ * micronutrient targets (same numbers the AI is briefed with), while the four
+ * macro rows (calories/protein/fat/carbs) use the user's personalized macro
+ * targets. `intakes` maps nutrientId → consumed amount.
+ */
+export function buildNutrientProgress(
+  intakes: Map<number, number>,
+  profile: { age: number; sex: Sex },
+  macroTargets: MacroTargets
+): NutrientProgressData[] {
+  return getDRIForProfile(profile.age, profile.sex)
+    .map(dri => {
+      const rdi =
+        dri.nutrientId === 1008 ? macroTargets.calories :
+        dri.nutrientId === 1003 ? macroTargets.proteinG :
+        dri.nutrientId === 1004 ? macroTargets.fatG :
+        dri.nutrientId === 1005 ? macroTargets.carbsG :
+        dri.rdi
+      const intake = intakes.get(dri.nutrientId) ?? 0
+      return {
+        nutrientId: dri.nutrientId,
+        name: dri.name,
+        unit: dri.unit,
+        intake,
+        rdi,
+        ul: dri.ul,
+        ...computeNutrientProgress(intake, rdi, dri.ul)
+      }
+    })
+    .filter(n => n.rdi > 0)
 }
 
 export const NUTRIENT_GROUPS: Array<{ label: string; nutrientIds: number[] }> = [
