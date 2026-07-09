@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Flame, MessageSquare, Plus, Droplet } from 'lucide-react'
+import { Flame, MessageSquare, Plus } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
-import { fmt, shiftDate, todayIso } from '../lib/formatters'
-import { computeStreak } from '../../../shared/progress'
-import type { WeightEntry } from '../lib/types'
-import { kgToDisplay, displayToKg, weightUnitLabel, mlToDisplay, volumeUnitLabel, round, WATER_GOAL_ML } from '../lib/units'
+import { fmt, todayIso } from '../lib/formatters'
 
 interface Props {
   onNavigate?: (tab: string) => void
@@ -52,52 +49,21 @@ function MacroBar({ label, intake, target, color }: { label: string; intake: num
 }
 
 export function HomePage({ onNavigate }: Props) {
-  const { entries, nutrientTotals, date, loadDay } = usePlanStore()
-  const { macroTargets, profile } = useProfileStore()
+  const { nutrientTotals, date, loadDay } = usePlanStore()
+  const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()
-  const [streak, setStreak] = useState(0)
-  const [waterMl, setWaterMl] = useState(0)
-  const [weight, setWeight] = useState<WeightEntry | null>(null)
-  const [weightInput, setWeightInput] = useState('')
   const [burned, setBurned] = useState(0)
   const today = todayIso()
-  const unit = profile?.unitSystem ?? 'metric'
 
-  // Load today's water, latest weight, and calories burned on mount.
+  // Load today's calories burned on mount.
   useEffect(() => {
-    window.api.waterGet({ date: today }).then(r => setWaterMl(r.ml))
-    window.api.weightLatest().then(setWeight)
     window.api.exerciseCaloriesForDate({ date: today }).then(r => setBurned(r.calories))
   }, [])
-
-  function changeWater(delta: number) {
-    window.api.waterAdd({ date: today, deltaMl: delta }).then(r => setWaterMl(r.ml))
-  }
-
-  function logWeight() {
-    const w = parseFloat(weightInput)
-    if (!w) return
-    const kg = displayToKg(w, unit)
-    window.api.weightSet({ date: today, weightKg: kg }).then(() => {
-      setWeight({ date: today, weightKg: kg })
-      setWeightInput('')
-    })
-  }
 
   // The dashboard is "today" focused — make sure today's plan is loaded.
   useEffect(() => {
     if (date !== todayIso()) loadDay(todayIso())
   }, [])
-
-  // Logging streak: consecutive days (ending today) that have at least one entry.
-  useEffect(() => {
-    const end = todayIso()
-    const start = shiftDate(end, -90)
-    window.api.logGetDailyLogs({ startDate: start, endDate: end }).then(logs => {
-      const logged = new Set(logs.filter(l => l.entryCount > 0).map(l => l.date))
-      setStreak(computeStreak(logged, end))
-    })
-  }, [entries.length])
 
   const totalsMap = new Map(nutrientTotals.map(n => [n.nutrientId, n.intake]))
   const intakeCal = totalsMap.get(1008) ?? 0
@@ -116,16 +82,9 @@ export function HomePage({ onNavigate }: Props) {
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-100">Dashboard</h1>
-          <p className="text-sm text-gray-500">Today's overview</p>
-        </div>
-        <div className="flex items-center gap-1.5 text-amber-400 bg-amber-950/40 px-3 py-1.5 rounded-full">
-          <Flame size={15} />
-          <span className="text-sm font-semibold">{streak}</span>
-          <span className="text-xs text-amber-500/80">day{streak === 1 ? '' : 's'}</span>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold text-gray-100">Dashboard</h1>
+        <p className="text-sm text-gray-500">Today's overview</p>
       </div>
 
       {!macroTargets ? (
@@ -177,59 +136,6 @@ export function HomePage({ onNavigate }: Props) {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Water */}
-          <div className="bg-gray-900 rounded-xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-gray-400 flex items-center gap-1.5">
-                <Droplet size={14} className="text-sky-400" /> Water
-              </h2>
-              <span className="text-xs text-gray-500">
-                {unit === 'imperial' ? round(mlToDisplay(waterMl, unit)) : waterMl} / {unit === 'imperial' ? round(mlToDisplay(WATER_GOAL_ML, unit)) : WATER_GOAL_ML} {volumeUnitLabel(unit)}
-              </span>
-            </div>
-            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-sky-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min((waterMl / WATER_GOAL_ML) * 100, 100)}%` }} />
-            </div>
-            <div className="flex gap-2">
-              {unit === 'imperial' ? (
-                <>
-                  <button onClick={() => changeWater(237)} className="text-xs bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-md transition-colors">+8 oz</button>
-                  <button onClick={() => changeWater(473)} className="text-xs bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-md transition-colors">+16 oz</button>
-                  <button onClick={() => changeWater(-237)} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1 rounded-md transition-colors ml-auto">−8 oz</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => changeWater(250)} className="text-xs bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-md transition-colors">+250 ml</button>
-                  <button onClick={() => changeWater(500)} className="text-xs bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-md transition-colors">+500 ml</button>
-                  <button onClick={() => changeWater(-250)} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-2.5 py-1 rounded-md transition-colors ml-auto">−250</button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Weight */}
-          <div className="bg-gray-900 rounded-xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-gray-400">Weight</h2>
-              {weight && <span className="text-xs text-gray-500">latest {fmt(kgToDisplay(weight.weightKg, unit), 1)} {weightUnitLabel(unit)}</span>}
-            </div>
-            {profile?.goalWeightKg != null && weight && (
-              <p className="text-xs text-gray-500">
-                Goal {fmt(kgToDisplay(profile.goalWeightKg, unit), 1)} {weightUnitLabel(unit)} · {fmt(kgToDisplay(Math.abs(weight.weightKg - profile.goalWeightKg), unit), 1)} {weightUnitLabel(unit)} to go
-              </p>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="number" step="0.1" placeholder={`Log today's weight (${weightUnitLabel(unit)})`}
-                value={weightInput} onChange={e => setWeightInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') logWeight() }}
-                className="flex-1 bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-lg px-3 py-2 placeholder-gray-600 focus:outline-none focus:border-emerald-500"
-              />
-              <button onClick={logWeight} className="bg-emerald-600 hover:bg-emerald-500 text-white text-sm px-3 rounded-lg transition-colors">Log</button>
-            </div>
           </div>
         </div>
       )}

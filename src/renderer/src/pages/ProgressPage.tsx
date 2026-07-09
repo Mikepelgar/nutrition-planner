@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Sparkles, Trophy, Target, Flame, Medal, Lock } from 'lucide-react'
+import { Sparkles, Trophy, Target, Medal, Lock } from 'lucide-react'
 import { useProfileStore } from '../store/useProfileStore'
 import { useRangeData } from '../hooks/useRangeData'
 import { useAiStream } from '../hooks/useAiStream'
 import { LineChart } from '../components/charts/LineChart'
 import { BarChart } from '../components/charts/BarChart'
-import { computeStreak, projectTimeToGoal, computeAchievements } from '../../../shared/progress'
+import { projectTimeToGoal, computeAchievements } from '../../../shared/progress'
 import { kgToDisplay, weightUnitLabel, WATER_GOAL_ML } from '../lib/units'
 import { fmt, todayIso } from '../lib/formatters'
 import { Button } from '../components/ui/Button'
@@ -41,13 +41,11 @@ export function ProgressPage() {
   const projection = projectTimeToGoal(weights, profile?.goalWeightKg)
 
   // Achievements (computed over the loaded window)
-  const loggedDates = new Set(logs.filter((l) => l.entryCount > 0).map((l) => l.date))
-  const streak = computeStreak(loggedDates, todayIso())
   const foodsLogged = logs.reduce((s, l) => s + l.entryCount, 0)
   const daysOnTarget = macroTargets
     ? logs.filter((l) => Math.abs(l.calories - macroTargets.calories) <= macroTargets.calories * 0.1).length
     : 0
-  const achievements = computeAchievements({ foodsLogged, weighIns: weights.length, streak, daysOnTarget })
+  const achievements = computeAchievements({ foodsLogged, weighIns: weights.length, daysOnTarget })
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-4xl mx-auto space-y-5">
@@ -88,7 +86,7 @@ export function ProgressPage() {
         {profile?.goalWeightKg == null ? (
           <p className="text-xs text-gray-500">Set a goal weight in Settings to track progress toward it.</p>
         ) : !latest ? (
-          <p className="text-xs text-gray-500">Log your weight (Dashboard) to see goal progress.</p>
+          <p className="text-xs text-gray-500">Log your weight to see goal progress.</p>
         ) : (
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
@@ -113,7 +111,6 @@ export function ProgressPage() {
       <div className="bg-gray-900 rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-medium text-gray-400 flex items-center gap-1.5">
           <Trophy size={14} /> Achievements
-          <span className="ml-auto flex items-center gap-1 text-orange-400 text-xs"><Flame size={12} /> {streak}-day streak</span>
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {achievements.map((a) => (
