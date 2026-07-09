@@ -292,7 +292,7 @@ at configured meal times and a water interval (8am–9pm). Prefs stored as the
 
 | Tab | Icon | Description |
 |---|---|---|
-| Dashboard | LayoutDashboard | Today overview: calorie ring, macros, top gaps, water, weight, streak, quick actions |
+| Dashboard | LayoutDashboard | Today overview: calorie ring, macros, top gaps, quick actions |
 | Add | CalendarDays | Daily food log for any date; one flat logged list; copy-day |
 | History | BarChart2 | `LogPage` — Daily/Weekly/Monthly/Yearly with expandable nutrient breakdown |
 | Progress | TrendingUp | Trend charts + goal projection + achievements + weekly AI review |
@@ -313,11 +313,10 @@ flat list; the optional meal label lives inside each entry's expanded editor.
 
 ### Dashboard / Progress / Planner specifics
 - **Dashboard** (`HomePage.tsx`): calorie ring (`remaining = target + exerciseKcal −
-  food`), macro bars, top 3 nutrient gaps, water quick-add, weight log + goal note,
-  logging streak, quick-action buttons.
+  food`), macro bars, top 3 nutrient gaps, quick-action buttons.
 - **Progress** (`ProgressPage.tsx`): range selector (30/90/365d); SVG `LineChart`/
   `BarChart` for weight, calories-vs-target, protein, water; goal-weight projection
-  + ETA (`shared/progress.ts`); achievements/streak; weekly AI review.
+  + ETA (`shared/progress.ts`); achievements; weekly AI review.
 - **Planner** (`PlannerPage.tsx`): 7-day strip (tap a day → Add for that date) + AI
   day-plan (text suggestions; no auto-insert — can't reliably map to USDA ids).
 
@@ -350,7 +349,7 @@ src/
 ├── shared/                      # PURE modules shared by main + renderer (+ *.test.ts)
 │   ├── macros.ts                # BMR/TDEE/diet-aware macro engine + custom targets
 │   ├── rdi.ts                   # DRI table (RDI/UL × 8 age/sex brackets) — single source
-│   ├── progress.ts              # streak, goal time-to-go projection, achievements
+│   ├── progress.ts              # goal time-to-go projection, achievements
 │   ├── aiContext.ts             # CoachContext + all AI prompt/message building
 │   └── aiErrors.ts              # typed AiErrorCode taxonomy + friendly messages
 ├── main/
