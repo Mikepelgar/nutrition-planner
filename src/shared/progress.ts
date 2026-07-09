@@ -1,19 +1,5 @@
 import type { WeightEntry } from '../renderer/src/lib/types'
 
-/** Consecutive days (ending today, or yesterday if today isn't logged) present in the set. */
-export function computeStreak(loggedDates: Set<string>, today: string): number {
-  let count = 0
-  const d = new Date(today + 'T00:00:00')
-  if (!loggedDates.has(today)) d.setDate(d.getDate() - 1)
-  for (;;) {
-    const iso = d.toISOString().slice(0, 10)
-    if (!loggedDates.has(iso)) break
-    count++
-    d.setDate(d.getDate() - 1)
-  }
-  return count
-}
-
 export interface GoalProjection {
   ratePerWeek: number // kg/week (negative = losing)
   etaDays: number | null // days to reach goal, only if trending toward it
@@ -54,14 +40,11 @@ export interface Achievement {
 export function computeAchievements(stats: {
   foodsLogged: number
   weighIns: number
-  streak: number
   daysOnTarget: number
 }): Achievement[] {
   return [
     { id: 'first_food', label: 'Logged your first food', earned: stats.foodsLogged >= 1 },
     { id: 'foods_100', label: 'Logged 100 foods', earned: stats.foodsLogged >= 100 },
-    { id: 'streak_7', label: '7-day logging streak', earned: stats.streak >= 7 },
-    { id: 'streak_30', label: '30-day logging streak', earned: stats.streak >= 30 },
     { id: 'weighins_10', label: '10 weigh-ins recorded', earned: stats.weighIns >= 10 },
     { id: 'ontarget_5', label: '5 days within calorie target', earned: stats.daysOnTarget >= 5 }
   ]

@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Sparkles, Trophy, Target, Flame } from 'lucide-react'
+import { Sparkles, Trophy, Target, Medal, Lock } from 'lucide-react'
 import { useProfileStore } from '../store/useProfileStore'
 import { useRangeData } from '../hooks/useRangeData'
 import { useAiStream } from '../hooks/useAiStream'
 import { LineChart } from '../components/charts/LineChart'
 import { BarChart } from '../components/charts/BarChart'
-import { computeStreak, projectTimeToGoal, computeAchievements } from '../../../shared/progress'
-import { kgToDisplay, weightUnitLabel } from '../lib/units'
+import { projectTimeToGoal, computeAchievements } from '../../../shared/progress'
+import { kgToDisplay, weightUnitLabel, WATER_GOAL_ML } from '../lib/units'
 import { fmt, todayIso } from '../lib/formatters'
 import { Button } from '../components/ui/Button'
+import { Pill } from '../components/ui/Pill'
 
 const mmdd = (iso: string): string => iso.slice(5).replace('-', '/')
 const RANGES = [
@@ -40,29 +41,21 @@ export function ProgressPage() {
   const projection = projectTimeToGoal(weights, profile?.goalWeightKg)
 
   // Achievements (computed over the loaded window)
-  const loggedDates = new Set(logs.filter((l) => l.entryCount > 0).map((l) => l.date))
-  const streak = computeStreak(loggedDates, todayIso())
   const foodsLogged = logs.reduce((s, l) => s + l.entryCount, 0)
   const daysOnTarget = macroTargets
     ? logs.filter((l) => Math.abs(l.calories - macroTargets.calories) <= macroTargets.calories * 0.1).length
     : 0
-  const achievements = computeAchievements({ foodsLogged, weighIns: weights.length, streak, daysOnTarget })
+  const achievements = computeAchievements({ foodsLogged, weighIns: weights.length, daysOnTarget })
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-gray-100">Progress</h1>
+        <h1 className="text-lg font-semibold text-gray-100">Progress</h1>
         <div className="flex gap-1">
           {RANGES.map((r) => (
-            <button
-              key={r.days}
-              onClick={() => setDays(r.days)}
-              className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                days === r.days ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-              }`}
-            >
+            <Pill key={r.days} active={days === r.days} onClick={() => setDays(r.days)}>
               {r.label}
-            </button>
+            </Pill>
           ))}
         </div>
       </div>
@@ -83,7 +76,7 @@ export function ProgressPage() {
         </div>
         <div className="bg-gray-900 rounded-xl p-4">
           <h2 className="text-sm font-medium text-gray-400 mb-2">Water (ml)</h2>
-          <BarChart data={waterBars} color="#38bdf8" target={2500} />
+          <BarChart data={waterBars} color="#38bdf8" target={WATER_GOAL_ML} />
         </div>
       </div>
 
@@ -93,7 +86,7 @@ export function ProgressPage() {
         {profile?.goalWeightKg == null ? (
           <p className="text-xs text-gray-500">Set a goal weight in Settings to track progress toward it.</p>
         ) : !latest ? (
-          <p className="text-xs text-gray-500">Log your weight (Dashboard) to see goal progress.</p>
+          <p className="text-xs text-gray-500">Log your weight to see goal progress.</p>
         ) : (
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
@@ -118,12 +111,12 @@ export function ProgressPage() {
       <div className="bg-gray-900 rounded-xl p-5 space-y-3">
         <h2 className="text-sm font-medium text-gray-400 flex items-center gap-1.5">
           <Trophy size={14} /> Achievements
-          <span className="ml-auto flex items-center gap-1 text-orange-400 text-xs"><Flame size={12} /> {streak}-day streak</span>
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {achievements.map((a) => (
-            <div key={a.id} className={`rounded-lg px-3 py-2 text-xs border ${a.earned ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-gray-800/50 border-gray-800 text-gray-600'}`}>
-              {a.earned ? '🏅 ' : '🔒 '}{a.label}
+            <div key={a.id} className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs border ${a.earned ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300' : 'bg-gray-800/50 border-gray-800 text-gray-500'}`}>
+              {a.earned ? <Medal size={12} className="shrink-0" /> : <Lock size={12} className="shrink-0" />}
+              {a.label}
             </div>
           ))}
         </div>
@@ -139,7 +132,7 @@ export function ProgressPage() {
         </div>
         {review.text
           ? <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{review.text}</p>
-          : <p className="text-xs text-gray-600">Get an AI summary of your last 7 days with concrete next steps.</p>}
+          : <p className="text-xs text-gray-500">Get an AI summary of your last 7 days with concrete next steps.</p>}
       </div>
     </div>
   )

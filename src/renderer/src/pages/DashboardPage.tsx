@@ -1,59 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
 import { FoodSearch } from '../components/food/FoodSearch'
 import { RecentFoods, type FoodHistoryMode } from '../components/food/RecentFoods'
-import { CustomFoods } from '../components/food/CustomFoods'
-import { SavedMeals } from '../components/food/SavedMeals'
 import { PlanEntryRow } from '../components/plan/PlanEntry'
 import { NutrientPanel } from '../components/nutrients/NutrientPanel'
 import { Skeleton } from '../components/ui/Skeleton'
 import { fmt, fmtDate, shiftDate, todayIso } from '../lib/formatters'
-import type { MealType } from '../lib/types'
 
-type FoodTab = 'search' | 'myfoods' | 'meals' | FoodHistoryMode
+type FoodTab = 'search' | FoodHistoryMode
 
 const FOOD_TABS: { id: FoodTab; label: string }[] = [
-  { id: 'search',    label: 'Search'    },
-  { id: 'recent',    label: 'Recent'    },
-  { id: 'previous',  label: 'Previous'  },
-  { id: 'favorites', label: '★ Faves'   },
-  { id: 'myfoods',   label: 'My foods'  },
-  { id: 'meals',     label: 'Meals'     },
-]
-
-const MEALS: { id: MealType; label: string }[] = [
-  { id: 'breakfast', label: 'Breakfast' },
-  { id: 'lunch',     label: 'Lunch'     },
-  { id: 'dinner',    label: 'Dinner'    },
-  { id: 'snack',     label: 'Snacks'    },
+  { id: 'search',    label: 'Search'  },
+  { id: 'history',   label: 'History' },
+  { id: 'favorites', label: '★ Faves' },
 ]
 
 export function DashboardPage() {
-  const { date, entries, loading, loadDay, foodCache, activeMeal, setActiveMeal, saveMealAsRecipe, copyFrom } = usePlanStore()
+  const { date, entries, loading, loadDay, nutrientTotals, copyFrom } = usePlanStore()
   const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()
   const [foodTab, setFoodTab] = useState<FoodTab>('search')
-  const [savingMeal, setSavingMeal] = useState<MealType | null>(null)
-  const [mealName, setMealName] = useState('')
   const [burned, setBurned] = useState(0)
-
-  async function confirmSaveMeal(meal: MealType) {
-    if (mealName.trim()) await saveMealAsRecipe(mealName.trim(), meal)
-    setSavingMeal(null)
-    setMealName('')
-  }
+  const [showCopy, setShowCopy] = useState(false)
 
   useEffect(() => { loadDay(date) }, [date])
   useEffect(() => { window.api.exerciseCaloriesForDate({ date }).then(r => setBurned(r.calories)) }, [date])
 
-  const totalCal = entries.reduce((sum, e) => {
-    const food = foodCache.get(e.fdcId)
-    const calPer100 = food?.nutrients.find(n => n.nutrientId === 1008)?.amount ?? 0
-    return sum + (e.grams / 100) * calPer100
-  }, 0)
+  const totalCal = nutrientTotals.find(n => n.nutrientId === 1008)?.intake ?? 0
 
   const isToday = date === todayIso()
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -68,6 +44,7 @@ export function DashboardPage() {
           <button
             onClick={() => loadDay(shiftDate(date, -1))}
             className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+            aria-label="Previous day"
           >
             <ChevronLeft size={16} />
           </button>
@@ -101,29 +78,49 @@ export function DashboardPage() {
           <button
             onClick={() => loadDay(shiftDate(date, 1))}
             className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+            aria-label="Next day"
           >
             <ChevronRight size={16} />
           </button>
         </div>
 
-        {/* Copy a previous day's foods into this day */}
+        {/* Copy a previous day's foods into this day — collapsed by default */}
         <div className="flex items-center gap-2 px-4 py-1.5 border-b border-gray-800 text-xs">
-          <button
-            onClick={() => copyFrom(shiftDate(date, -1))}
-            className="text-gray-500 hover:text-emerald-400 transition-colors"
-            title="Copy the previous day's foods into this day"
-          >
-            ⧉ Copy previous day
-          </button>
-          <span className="text-gray-700">·</span>
-          <label className="text-gray-500 flex items-center gap-1">
-            from
-            <input
-              type="date"
-              onChange={e => e.target.value && copyFrom(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500"
-            />
-          </label>
+          {!showCopy ? (
+            <button
+              onClick={() => setShowCopy(true)}
+              className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
+              aria-expanded={false}
+            >
+              <Copy size={12} /> Copy from another day…
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => copyFrom(shiftDate(date, -1))}
+                className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
+                title="Copy the previous day's foods into this day"
+              >
+                <Copy size={12} /> Copy previous day
+              </button>
+              <span className="text-gray-700">·</span>
+              <label className="text-gray-500 flex items-center gap-1">
+                from
+                <input
+                  type="date"
+                  onChange={e => e.target.value && copyFrom(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500"
+                />
+              </label>
+              <button
+                onClick={() => setShowCopy(false)}
+                className="ml-auto text-gray-500 hover:text-gray-300"
+                aria-label="Hide copy controls"
+              >
+                <X size={12} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Calorie summary (target includes calories burned via exercise) */}
@@ -149,24 +146,6 @@ export function DashboardPage() {
           )
         })()}
 
-        {/* Meal selector — which meal new foods get added to */}
-        <div className="flex items-center gap-1.5 px-4 py-2 border-b border-gray-800">
-          <span className="text-xs text-gray-500 mr-1">Add to:</span>
-          {MEALS.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setActiveMeal(m.id)}
-              className={`px-2 py-0.5 text-xs rounded-full font-medium transition-colors ${
-                activeMeal === m.id
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
         {/* Food sub-tabs */}
         <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-800">
           {FOOD_TABS.map(t => (
@@ -191,24 +170,10 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* History tabs */}
-        {(foodTab === 'recent' || foodTab === 'previous' || foodTab === 'favorites') && (
+        {/* History / Faves tabs */}
+        {(foodTab === 'history' || foodTab === 'favorites') && (
           <div className="border-b border-gray-800">
             <RecentFoods mode={foodTab} />
-          </div>
-        )}
-
-        {/* My foods (custom) tab */}
-        {foodTab === 'myfoods' && (
-          <div className="border-b border-gray-800">
-            <CustomFoods />
-          </div>
-        )}
-
-        {/* Saved meals / recipes tab */}
-        {foodTab === 'meals' && (
-          <div className="border-b border-gray-800">
-            <SavedMeals />
           </div>
         )}
 
@@ -225,50 +190,20 @@ export function DashboardPage() {
             </div>
           ))}
           {!loading && entries.length === 0 && (
-            <p className="text-sm text-gray-600 px-4 py-6 text-center">
+            <p className="text-sm text-gray-500 px-4 py-6 text-center">
               No foods added yet.{' '}
               {foodTab === 'search' ? 'Search above to get started.' : 'Tap + on a food above.'}
             </p>
           )}
-          {!loading && MEALS.map(m => {
-            const items = entries.filter(e => (e.meal ?? 'snack') === m.id)
-            if (items.length === 0) return null
-            const mealCal = items.reduce((s, e) => {
-              const food = foodCache.get(e.fdcId)
-              const calPer100 = food?.nutrients.find(n => n.nutrientId === 1008)?.amount ?? 0
-              return s + (e.grams / 100) * calPer100
-            }, 0)
-            return (
-              <div key={m.id}>
-                <div className="flex justify-between items-center px-4 py-1.5 bg-gray-900/60 border-b border-gray-800/60">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{m.label}</span>
-                  {savingMeal === m.id ? (
-                    <div className="flex items-center gap-1">
-                      <input
-                        autoFocus value={mealName} onChange={e => setMealName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') confirmSaveMeal(m.id); if (e.key === 'Escape') setSavingMeal(null) }}
-                        placeholder="Meal name"
-                        className="text-xs bg-gray-800 border border-gray-700 text-gray-100 rounded px-2 py-0.5 w-28 focus:outline-none focus:border-emerald-500"
-                      />
-                      <button onClick={() => confirmSaveMeal(m.id)} className="text-[10px] text-emerald-400 hover:text-emerald-300">Save</button>
-                      <button onClick={() => setSavingMeal(null)} className="text-[10px] text-gray-500 hover:text-gray-300">✕</button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => { setSavingMeal(m.id); setMealName(`My ${m.label.toLowerCase()}`) }}
-                        className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors"
-                      >
-                        Save as meal
-                      </button>
-                      <span className="text-xs text-gray-600">{fmt(mealCal, 0)} kcal</span>
-                    </div>
-                  )}
-                </div>
-                {items.map(entry => <PlanEntryRow key={entry.id} entry={entry} />)}
+          {!loading && entries.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center px-4 py-1.5 bg-gray-900/60 border-b border-gray-800/60">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Logged</span>
+                <span className="text-xs text-gray-500">{fmt(totalCal, 0)} kcal</span>
               </div>
-            )
-          })}
+              {entries.map(entry => <PlanEntryRow key={entry.id} entry={entry} />)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -276,7 +211,7 @@ export function DashboardPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         <h2 className="text-sm font-semibold text-gray-400 mb-3 px-1">Nutrient Targets</h2>
         {nutrients.length === 0 ? (
-          <p className="text-sm text-gray-600 px-1 py-4 text-center">Add foods to see your nutrient progress.</p>
+          <p className="text-sm text-gray-500 px-1 py-4 text-center">Add foods to see your nutrient progress.</p>
         ) : (
           <NutrientPanel nutrients={nutrients} />
         )}

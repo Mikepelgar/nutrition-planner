@@ -37,34 +37,27 @@ export function addPlanEntry(
 
 export function updatePlanEntry(
   db: Database.Database,
-  payload: { entryId: number; servingUnit: ServingUnit; servingAmount: number; grams: number }
+  payload: { entryId: number; servingUnit: ServingUnit; servingAmount: number; grams: number; meal?: MealType }
 ): PlanEntry {
   return db.prepare(`
-    UPDATE plan_entry SET serving_unit = ?, serving_amount = ?, grams = ?
+    UPDATE plan_entry SET serving_unit = ?, serving_amount = ?, grams = ?, meal = COALESCE(?, meal)
     WHERE id = ?
     RETURNING id, plan_id AS planId, fdc_id AS fdcId, food_description AS foodDescription,
               serving_unit AS servingUnit, serving_amount AS servingAmount, grams, position, meal
-  `).get(payload.servingUnit, payload.servingAmount, payload.grams, payload.entryId) as PlanEntry
+  `).get(payload.servingUnit, payload.servingAmount, payload.grams, payload.meal ?? null, payload.entryId) as PlanEntry
 }
 
 export function deletePlanEntry(db: Database.Database, entryId: number): void {
   db.prepare('DELETE FROM plan_entry WHERE id = ?').run(entryId)
 }
 
-/** Copy entries from one plan into another (append), optionally just one meal. */
-export function copyEntries(
-  db: Database.Database,
-  sourcePlanId: number,
-  targetPlanId: number,
-  meal?: MealType
-): void {
+/** Copy all entries from one plan into another (append). */
+export function copyEntries(db: Database.Database, sourcePlanId: number, targetPlanId: number): void {
   const offset = (db.prepare('SELECT COALESCE(MAX(position),0) AS m FROM plan_entry WHERE plan_id = ?')
     .get(targetPlanId) as { m: number }).m
-  const where = meal ? 'WHERE plan_id = ? AND meal = ?' : 'WHERE plan_id = ?'
-  const params = meal ? [targetPlanId, offset, sourcePlanId, meal] : [targetPlanId, offset, sourcePlanId]
   db.prepare(`
     INSERT INTO plan_entry (plan_id, fdc_id, food_description, serving_unit, serving_amount, grams, position, meal)
     SELECT ?, fdc_id, food_description, serving_unit, serving_amount, grams, position + ?, meal
-    FROM plan_entry ${where}
-  `).run(...params)
+    FROM plan_entry WHERE plan_id = ?
+  `).run(targetPlanId, offset, sourcePlanId)
 }

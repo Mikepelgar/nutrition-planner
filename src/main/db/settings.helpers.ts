@@ -1,4 +1,5 @@
 import { safeStorage } from 'electron'
+import log from 'electron-log/main'
 import { getDb } from './database'
 
 /**
@@ -28,7 +29,10 @@ export function decryptSetting(value: string): string {
 export function encryptSetting(value: string): string {
   try {
     return safeStorage.encryptString(value).toString('base64')
-  } catch {
+  } catch (err) {
+    // Deliberate fallback so a missing OS keychain doesn't break saving, but
+    // it means the value is stored in PLAINTEXT — make that visible in logs.
+    log.warn('safeStorage encryption unavailable — storing setting unencrypted:', (err as Error)?.message)
     return value
   }
 }

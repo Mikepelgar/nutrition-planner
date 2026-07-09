@@ -73,7 +73,7 @@ export function ExercisePage() {
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
         {/* Date nav */}
         <div className="flex items-center justify-between">
-          <button onClick={() => setDate(shiftDate(date, -1))} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200">
+          <button onClick={() => setDate(shiftDate(date, -1))} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200" aria-label="Previous day">
             <ChevronLeft size={16} />
           </button>
           <div className="text-center">
@@ -82,7 +82,7 @@ export function ExercisePage() {
               <button onClick={() => setDate(todayIso())} className="text-xs text-emerald-500 hover:text-emerald-400">Back to today</button>
             )}
           </div>
-          <button onClick={() => setDate(shiftDate(date, 1))} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200">
+          <button onClick={() => setDate(shiftDate(date, 1))} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200" aria-label="Next day">
             <ChevronRight size={16} />
           </button>
         </div>
@@ -113,7 +113,7 @@ export function ExercisePage() {
         {/* List */}
         <div className="bg-gray-900 rounded-xl p-2">
           {items.length === 0 ? (
-            <p className="text-xs text-gray-600 text-center py-4">No exercise logged for this day.</p>
+            <p className="text-xs text-gray-500 text-center py-4">No exercise logged for this day.</p>
           ) : (
             <div className="divide-y divide-gray-800/60">
               {items.map((e) => (
@@ -124,7 +124,7 @@ export function ExercisePage() {
                       {e.durationMin ? `${fmt(e.durationMin, 0)} min · ` : ''}{fmt(e.caloriesBurned, 0)} kcal
                     </p>
                   </div>
-                  <button onClick={() => handleDelete(e.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400">
+                  <button onClick={() => handleDelete(e.id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-600 hover:text-red-400" aria-label={`Delete ${e.name}`}>
                     <Trash2 size={13} />
                   </button>
                 </div>

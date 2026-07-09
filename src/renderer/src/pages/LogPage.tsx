@@ -3,9 +3,9 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useProfileStore } from '../store/useProfileStore'
 import { NutrientPanel } from '../components/nutrients/NutrientPanel'
 import { Skeleton } from '../components/ui/Skeleton'
-import { computeNutrientProgress, NUTRIENT_GROUPS } from '../lib/nutrientProgress'
+import { buildNutrientProgress } from '../lib/nutrientProgress'
 import type { NutrientProgressData } from '../lib/types'
-import { fmt, shiftDate, todayIso } from '../lib/formatters'
+import { fmt, localIso, shiftDate, todayIso } from '../lib/formatters'
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -58,7 +58,7 @@ function weekMonday(iso: string): string {
   const date = new Date(y, m - 1, d)
   const day = date.getDay()
   date.setDate(date.getDate() + (day === 0 ? -6 : 1 - day))
-  return date.toISOString().slice(0, 10)
+  return localIso(date)
 }
 
 function daysInMonth(year: number, month: number) {
@@ -230,66 +230,6 @@ function buildYearlyItems(entries: DailyEntry[]): LogItem[] {
     })
 }
 
-// ─── RDI helpers (mirrors useNutrientTotals logic) ───────────────────────────
-
-function getRdi(id: number, profile: { sex: string; age: number }, macroTargets: { calories: number; proteinG: number; fatG: number; carbsG: number }): number {
-  if (id === 1008) return macroTargets.calories
-  if (id === 1003) return macroTargets.proteinG
-  if (id === 1004) return macroTargets.fatG
-  if (id === 1005) return macroTargets.carbsG
-  const male = profile.sex === 'male'
-  const age = profile.age
-  const t: Record<number, number> = {
-    1079: male ? 38 : 25, 2000: 50, 1258: 20, 1257: 2, 1253: 300, 1293: male ? 17 : 12,
-    1162: male ? 90 : 75, 1106: male ? 900 : 700, 1114: 15, 1109: 15, 1185: male ? 120 : 90,
-    1165: male ? 1.2 : 1.1, 1166: male ? 1.3 : 1.1, 1167: male ? 16 : 14,
-    1175: age > 50 ? (male ? 1.7 : 1.5) : 1.3, 1177: 400, 1178: 2.4, 1176: 30, 1170: 5,
-    1180: male ? 550 : 425, 1087: age > 50 ? 1200 : 1000,
-    1089: male ? 8 : (age > 50 ? 8 : 18),
-    1090: male ? (age > 30 ? 420 : 400) : (age > 30 ? 320 : 310),
-    1091: 700, 1095: male ? 11 : 8, 1098: 0.9, 1101: male ? 2.3 : 1.8, 1103: 55,
-    1093: 1500, 1092: male ? 3400 : 2600
-  }
-  return t[id] ?? 0
-}
-
-function getUl(id: number): number | null {
-  const u: Record<number, number> = {
-    1162: 2000, 1106: 3000, 1114: 100, 1109: 1000, 1167: 35, 1175: 100, 1177: 1000,
-    1087: 2500, 1089: 45, 1090: 350, 1091: 4000, 1095: 40, 1098: 10, 1101: 11,
-    1103: 400, 1093: 2300, 1180: 3500
-  }
-  return u[id] ?? null
-}
-
-const ALL_NUTRIENT_IDS = new Set(NUTRIENT_GROUPS.flatMap(g => g.nutrientIds))
-
-function toProgressData(
-  breakdown: NutrientBreak[],
-  profile: { sex: string; age: number },
-  macroTargets: { calories: number; proteinG: number; fatG: number; carbsG: number }
-): NutrientProgressData[] {
-  const intakeMap = new Map(breakdown.map(b => [b.nutrientId, b.dailyAvg]))
-  return [...ALL_NUTRIENT_IDS]
-    .map(nutrientId => {
-      const rdi = getRdi(nutrientId, profile, macroTargets)
-      if (rdi === 0) return null
-      const ul = getUl(nutrientId)
-      const intake = intakeMap.get(nutrientId) ?? 0
-      const meta = breakdown.find(b => b.nutrientId === nutrientId)
-      return {
-        nutrientId,
-        name: meta?.name ?? `Nutrient ${nutrientId}`,
-        unit: meta?.unit ?? '',
-        intake,
-        rdi,
-        ul,
-        ...computeNutrientProgress(intake, rdi, ul)
-      } as NutrientProgressData
-    })
-    .filter((n): n is NutrientProgressData => n !== null)
-}
-
 // ─── sub-item row ─────────────────────────────────────────────────────────────
 
 function SubRow({ item, calTarget }: { item: SubItem; calTarget: number }) {
@@ -365,7 +305,7 @@ function LogItemCard({ item, calTarget, expanded, onToggle, nutrientData, loadin
           <span>C <span className="text-gray-300">{fmt(item.carbsG, 0)}g</span></span>
           <span>F <span className="text-gray-300">{fmt(item.fatG, 0)}g</span></span>
           {!isMultiDay && item.entryCount != null && (
-            <span className="ml-auto text-gray-600">{item.entryCount} {item.entryCount === 1 ? 'item' : 'items'}</span>
+            <span className="ml-auto text-gray-500">{item.entryCount} {item.entryCount === 1 ? 'item' : 'items'}</span>
           )}
         </div>
       </button>
@@ -403,7 +343,7 @@ function LogItemCard({ item, calTarget, expanded, onToggle, nutrientData, loadin
             ) : nutrientData && nutrientData.length > 0 ? (
               <NutrientPanel nutrients={nutrientData} />
             ) : (
-              <p className="text-xs text-gray-600">No nutrient data available.</p>
+              <p className="text-xs text-gray-500">No nutrient data available.</p>
             )}
           </div>
         </div>
@@ -428,7 +368,9 @@ export function LogPage() {
   const [loading, setLoading] = useState(true)
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [nutrientCache, setNutrientCache] = useState<Map<string, NutrientProgressData[]>>(new Map())
-  const [loadingNutrients, setLoadingNutrients] = useState(false)
+  // Key currently being fetched — per-item so rapidly expanding two rows can't
+  // show the wrong row as loading.
+  const [loadingKey, setLoadingKey] = useState<string | null>(null)
 
   const calTarget = macroTargets?.calories ?? 2000
 
@@ -444,7 +386,9 @@ export function LogPage() {
       '2000-01-01'
 
     window.api.logGetDailyLogs({ startDate, endDate: today })
-      .then(data => { setLogs(data as DailyEntry[]); setLoading(false) })
+      .then(data => setLogs(data as DailyEntry[]))
+      .catch(() => setLogs([]))
+      .finally(() => setLoading(false))
   }, [period])
 
   // Build period items from daily data
@@ -464,14 +408,16 @@ export function LogPage() {
     setExpandedKey(item.key)
 
     if (nutrientCache.has(item.key) || !profile || !macroTargets) return
-    setLoadingNutrients(true)
+    setLoadingKey(item.key)
 
     window.api.logGetNutrientBreakdown({ startDate: item.startDate, endDate: item.endDate })
       .then(breakdown => {
-        const progressData = toProgressData(breakdown as NutrientBreak[], profile, macroTargets)
+        const intakes = new Map((breakdown as NutrientBreak[]).map(b => [b.nutrientId, b.dailyAvg]))
+        const progressData = buildNutrientProgress(intakes, profile, macroTargets)
         setNutrientCache(prev => new Map(prev).set(item.key, progressData))
-        setLoadingNutrients(false)
       })
+      .catch(() => { /* row falls back to the "No nutrient data" message */ })
+      .finally(() => setLoadingKey(prev => (prev === item.key ? null : prev)))
   }, [expandedKey, nutrientCache, profile, macroTargets])
 
   return (
@@ -480,7 +426,7 @@ export function LogPage() {
 
         {/* Header + toggler */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">History</h1>
+          <h1 className="text-lg font-semibold text-gray-100">History</h1>
           <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
             {PERIODS.map(p => (
               <button
@@ -497,7 +443,7 @@ export function LogPage() {
         </div>
 
         {macroTargets && (
-          <p className="text-xs text-gray-600 mb-3">
+          <p className="text-xs text-gray-500 mb-3">
             Target: {fmt(calTarget, 0)} kcal/day
             {period !== 'daily' && ' · calories shown as daily average'}
           </p>
@@ -520,7 +466,7 @@ export function LogPage() {
         ) : items.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-sm text-gray-500">No entries logged yet.</p>
-            <p className="text-xs text-gray-600 mt-1">Go to Today to start tracking your food.</p>
+            <p className="text-xs text-gray-500 mt-1">Go to the Add tab to start tracking your food.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -532,7 +478,7 @@ export function LogPage() {
                 expanded={expandedKey === item.key}
                 onToggle={() => handleToggle(item)}
                 nutrientData={nutrientCache.get(item.key) ?? null}
-                loadingNutrients={loadingNutrients && expandedKey === item.key}
+                loadingNutrients={loadingKey === item.key}
                 period={period}
               />
             ))}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Key, CheckCircle, Eye, EyeOff, Sparkles, Bell } from 'lucide-react'
 import { Button } from '../components/ui/Button'
+import { Pill } from '../components/ui/Pill'
 import { ProfileForm } from '../components/profile/ProfileForm'
 import type { ReminderPrefs } from '../lib/types'
 
@@ -161,22 +162,12 @@ export function SettingsPage() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => handleKeySourceChange('builtin')}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-              keySource === 'builtin' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
+          <Pill active={keySource === 'builtin'} onClick={() => handleKeySourceChange('builtin')}>
             Use built-in AI (free, rate-limited)
-          </button>
-          <button
-            onClick={() => handleKeySourceChange('custom')}
-            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-              keySource === 'custom' ? 'bg-emerald-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'
-            }`}
-          >
+          </Pill>
+          <Pill active={keySource === 'custom'} onClick={() => handleKeySourceChange('custom')}>
             Use my own API key
-          </button>
+          </Pill>
         </div>
 
         {keySource === 'builtin' ? (
@@ -261,6 +252,7 @@ export function SettingsPage() {
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
                 tabIndex={-1}
                 title={showKey ? 'Hide key' : 'Show key'}
+                aria-label={showKey ? 'Hide key' : 'Show key'}
               >
                 {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -271,7 +263,7 @@ export function SettingsPage() {
         {/* Model override */}
         <div>
           <label className="text-xs text-gray-400 mb-1.5 block">
-            Model <span className="text-gray-600">(optional)</span>
+            Model <span className="text-gray-500">(optional)</span>
           </label>
           <input
             type="text"
@@ -353,7 +345,7 @@ export function SettingsPage() {
           <Button variant="ghost" onClick={() => handleExport('json')}>Export all (JSON)</Button>
         </div>
         {exportMsg && <p className="text-xs text-emerald-400 break-all">{exportMsg}</p>}
-        <p className="text-xs text-gray-600">Daily backups are kept in your app data folder (last 7 days).</p>
+        <p className="text-xs text-gray-500">Daily backups are kept in your app data folder (last 7 days).</p>
       </div>
 
       {/* About */}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, CalendarDays, MessageSquare, Settings, BarChart2, Dumbbell, TrendingUp, CalendarRange } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, MessageSquare, Settings, BarChart2, Dumbbell, TrendingUp, CalendarRange, X } from 'lucide-react'
 import { useProfileStore } from './store/useProfileStore'
 import { usePlanStore } from './store/usePlanStore'
 import { HomePage } from './pages/HomePage'
@@ -47,7 +47,9 @@ export default function App() {
       <button onClick={() => window.api.updateInstall()} className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg">
         Restart &amp; install
       </button>
-      <button onClick={() => setUpdateReady(null)} className="text-emerald-300 hover:text-white text-sm">✕</button>
+      <button onClick={() => setUpdateReady(null)} className="text-emerald-300 hover:text-white" aria-label="Dismiss update notice">
+        <X size={14} />
+      </button>
     </div>
   )
 
@@ -85,14 +87,16 @@ export default function App() {
               key={item.id}
               onClick={() => setTab(item.id)}
               title={item.label}
+              aria-label={item.label}
+              aria-current={active ? 'page' : undefined}
               className={`flex flex-col items-center gap-0.5 p-2 rounded-xl w-12 transition-colors ${
                 active
                   ? 'bg-emerald-700/30 text-emerald-400'
-                  : 'text-gray-600 hover:text-gray-300 hover:bg-gray-800'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
               }`}
             >
               <Icon size={18} />
-              <span className="text-[9px] font-medium leading-tight">{item.label}</span>
+              <span className="text-[10px] font-medium leading-tight">{item.label}</span>
             </button>
           )
         })}

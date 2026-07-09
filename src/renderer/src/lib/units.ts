@@ -6,6 +6,9 @@ import type { UnitSystem } from './types'
 const LB_PER_KG = 2.2046226218
 const ML_PER_FLOZ = 29.5735
 
+/** Daily hydration goal shown on the Dashboard water card and Progress chart. */
+export const WATER_GOAL_ML = 2500
+
 export const weightUnitLabel = (sys: UnitSystem): string => (sys === 'imperial' ? 'lb' : 'kg')
 export const volumeUnitLabel = (sys: UnitSystem): string => (sys === 'imperial' ? 'fl oz' : 'ml')
 
