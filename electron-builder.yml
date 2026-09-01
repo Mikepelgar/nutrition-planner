@@ -45,15 +45,14 @@ linux:
   maintainer: mikep
   category: Utility
 
-# ── Auto-update publishing ──────────────────────────────────────────────────
-# Inert until a real repo is set + GH_TOKEN is provided at publish time
-# (`electron-builder --publish always`). Update the owner/repo before releasing.
+# Auto-update publishing
+# Requires GH_TOKEN at publish time (`electron-builder --publish always`).
 publish:
   provider: github
-  owner: '[GITHUB_OWNER]'
-  repo: '[GITHUB_REPO]'
+  owner: Mikepelgar
+  repo: nutrition-planner
 
-# ── Code signing (inert until credentials are supplied) ─────────────────────
+# Code signing (inert until credentials are supplied)
 # Windows: electron-builder auto-signs when these env vars are set at build time:
 #   CSC_LINK            = path or base64 of your .pfx code-signing certificate
 #   CSC_KEY_PASSWORD    = the certificate password
