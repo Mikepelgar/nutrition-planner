@@ -6,11 +6,12 @@ and macro targets from your body metrics and goal, scores 35 micronutrients agai
 age/sex-specific DRI values, and can brief an LLM with exactly the same numbers the UI
 is showing you.
 
-It exists because the mainstream trackers all require an account, sync health data to
-a server, and put micronutrient detail behind a subscription. This one has no account,
-no server, and no telemetry. The food database ships inside the app, so search works
-offline; the only bytes that ever leave the machine are the AI context you explicitly
-send to a provider you configured yourself.
+It exists because the mainstream trackers all sync your health data to a server, make
+an account mandatory to open the app at all, and put micronutrient detail behind a
+subscription. Here the food database ships inside the app and your log never leaves
+it: tracking, targets, charts, and history all work offline with no account. The AI
+coaching is the one networked feature — it needs a sign-in and sends that question's
+context to a proxy — and everything else keeps working whether or not you use it.
 
 Windows, macOS, and Linux (Electron). Tracking tool only — not medical advice.
 
@@ -24,7 +25,9 @@ renderer (sandboxed, no Node)
    ▼
 preload  ──ipcRenderer.invoke──▶  main process
                                     ├── better-sqlite3 ──▶ SQLite in userData/
-                                    └── provider SDK   ──▶ AI provider (HTTPS)
+                                    └── HTTPS + user JWT ─▶ Supabase Edge Function
+                                                              ├── quota (Postgres)
+                                                              └── OpenAI
 ```
 
 The renderer never touches SQLite, the filesystem, or the network. Every capability it
@@ -35,8 +38,9 @@ CSP of `'self'`, a `will-navigate` guard, and `setWindowOpenHandler` routing ext
 links to the system browser.
 
 Putting all AI traffic in the main process is what makes that CSP possible: the
-renderer needs no external network access at all, and provider API keys never exist in
-renderer memory. They are encrypted at rest with Electron's `safeStorage`.
+renderer needs no external network access at all. The main process holds no provider
+key either — see below — only a session token, encrypted at rest with Electron's
+`safeStorage`.
 
 ### One logged food, end to end
 
@@ -56,9 +60,10 @@ renderer memory. They are encrypted at rest with Electron's `safeStorage`.
    first and scale once. Summing per entry instead was a real bug: the same food logged
    twice in a day kept only the last entry's grams and undercounted micronutrients
    (regression test in `src/main/db/queries/nutrient.queries.test.ts`).
-5. **Coaching** — `src/shared/aiContext.ts` assembles the profile, targets, diet rules,
-   today's log, exercise burn, nutrient gaps below 80% RDI, and anything over its upper
-   limit into a provider-neutral system prompt plus message list.
+5. **Coaching** — the main process gathers the raw rows and posts them to the proxy,
+   which validates them, meters the request, and runs `src/shared/aiContext.ts` to build
+   the system prompt: profile, targets, diet rules, today's log, exercise burn, nutrient
+   gaps below 80% RDI, and anything over its upper limit.
 
 ### Design decisions
 
@@ -82,10 +87,13 @@ tables (profile, log, weight, water, favorites, settings), keeping the last 7 �
 up the 2M static food rows daily would cost hundreds of MB to protect data that can
 simply be re-copied.
 
-**Provider abstraction is one field wide.** Nine of the ten providers speak the OpenAI
-wire format, so they differ only by base URL; the sole real divergence — Anthropic's
-top-level `system` parameter versus an OpenAI `role: 'system'` message — lives in
-`streamChat` and nowhere else. Prompt building stays provider-neutral.
+**The client is never trusted with the prompt.** The app sends the Edge Function
+structured context — numbers and enums, validated against a schema on arrival — and the
+*server* runs `buildSystemPrompt` to assemble the briefing. Accepting a ready-made
+prompt would have made the proxy a general-purpose model for anyone holding an account,
+and it would have put the allergen restrictions under the caller's control. The prompt
+builders are shared source, copied into the function by `npm run sync:shared` with a CI
+check that fails on drift.
 
 ### The parts that took real work
 
@@ -111,10 +119,19 @@ pinned to Electron 41 because no `better-sqlite3` 12.10 prebuilt exists for Elec
 **Treating logged food as untrusted input to the model.** Food names and avoid-food
 entries are user-typed text flowing into a prompt. They are sanitised and wrapped in
 labelled data blocks that the system prompt instructs the model to read as data only
-(`sanitizeUserText` / `fenceUserData` in `src/shared/aiContext.ts`). History is capped
-at 12 turns, consecutive same-role turns are merged (providers reject non-alternating
-roles), and older log entries collapse into a summary line so a heavy logging day can't
-blow the context budget.
+(`sanitizeUserText` / `fenceUserData` in `src/shared/aiContext.ts`), and that now runs
+server-side where a modified client cannot skip it. History is capped at 12 turns,
+consecutive same-role turns are merged (providers reject non-alternating roles), and
+older log entries collapse into a summary line so a heavy logging day can't blow the
+context budget.
+
+**A key you ship is a key you have given away.** The app used to compile a provider key
+into its own bundle and meter it with counters in the user's SQLite file — both
+recoverable or editable by anyone who installed it (`asar extract`, then grep; or one
+`UPDATE` statement). The fix was structural rather than clever: the key moved to
+Supabase secrets, the quota moved into Postgres behind a `SECURITY DEFINER` function
+keyed on `auth.uid()`, and the client kept nothing worth stealing. The usage table has a
+select policy and no write policy at all, so no client can increment its own allowance.
 
 ## Running it
 
@@ -150,6 +167,7 @@ it re-copies whenever `resources/nutrition.db` is newer than the copy in `userDa
 | `npm run typecheck` | `tsc --noEmit` over main and renderer projects |
 | `npm run lint` | ESLint 9 (flat config) |
 | `npm run test` | Vitest — macros, DRI progress, unit conversion, AI context assembly |
+| `npm run sync:shared` | Copy the shared prompt modules into the Edge Function |
 | `npm run build` | Bundle main / preload / renderer |
 | `npm run build:win` | Native rebuild, bundle, and package a Windows NSIS installer |
 
@@ -166,27 +184,53 @@ src/main/       Electron main: window + security setup, SQLite access, IPC
 src/preload/    the entire renderer API surface, one contextBridge object
 src/renderer/   React UI — pages, components, zustand stores, display helpers
 scripts/        offline database build pipeline (Node ABI, not shipped)
+supabase/       migrations (schema + RLS + quota function) and the ai-chat
+                Edge Function; _shared/ is generated by npm run sync:shared
 ```
 
 ## AI configuration
 
-Add a provider key in Settings and it is encrypted with `safeStorage` and stored
-per-provider; ten providers are supported (Anthropic through its own SDK, the rest via
-the OpenAI SDK plus a base URL, including a local Ollama).
+AI runs through a Supabase Edge Function that holds the provider key, so nothing
+secret ships in the installer. Users sign in with Google or GitHub; the app never sees
+a password, and the OAuth callback returns through the `nutrition-planner://` protocol
+handler.
 
-Distributed builds can also carry an embedded Anthropic key so the AI features work
-with no setup. `BUILTIN_ANTHROPIC_API_KEY` in a gitignored `.env` is compiled into the
-**main bundle only** via `define` in `electron.vite.config.ts`, pinned to a
-cost-efficient model, and soft-rate-limited per install (20/day, 200/month —
-`src/main/constants/ai-limits.ts`). Builds from source leave it empty and fall back to
-bring-your-own-key.
+To stand up your own backend:
+
+```bash
+npx supabase link --project-ref <your-project-ref>
+npm run supabase:push                        # schema, RLS policies, quota function
+npx supabase secrets set OPENAI_API_KEY=...  # the one real secret; server-side only
+npm run supabase:deploy                      # syncs shared modules, deploys ai-chat
+```
+
+Then put the project URL and anon key in `.env` (see `.env.example`) so they compile
+into the build. Neither is a secret — the anon key grants exactly what the row-level
+security policies allow, which is why every policy is written to be safe in the hands
+of a hostile client. In the Supabase dashboard, add `nutrition-planner://auth-callback`
+to the allowed redirect URLs and enable the Google/GitHub providers.
+
+Cost and the allowance live in the database, not in code: `ai_limits` holds the daily
+and monthly caps that `consume_ai_quota()` enforces and Settings displays, and
+`global_usage` carries a hard monthly ceiling as a circuit breaker. The model is a
+server-side setting (`AI_MODEL`, default `gpt-5-mini`), so changing it needs no client
+release. A build with no `.env` reports AI as unconfigured and every other feature works
+normally.
+
+Local development without spending money: `npm run supabase:start`, then
+`npm run supabase:serve` with `OPENAI_BASE_URL` pointed at any OpenAI-compatible server.
 
 ## Data and privacy
 
-Everything lives in SQLite under the OS user-data folder — `%APPDATA%\nutrition-planner`
-on Windows — alongside daily backups and `electron-log` output. No accounts, no
-telemetry, and CSV/JSON export from Settings. The only outbound requests are the AI
-calls you initiate. See [PRIVACY.md](PRIVACY.md).
+Your food log, profile, weights, and exercise history live in SQLite under the OS
+user-data folder — `%APPDATA%
+utrition-planner` on Windows — alongside daily backups
+and `electron-log` output. None of it is uploaded, and there is no telemetry.
+
+The server stores only an account (id + the email your OAuth provider supplies) and
+usage counters. Using an AI feature sends that question's context — profile summary,
+targets, the day's log, nutrient gaps — to the proxy, which forwards it to OpenAI.
+Skip the AI features and nothing about you leaves the machine. See [PRIVACY.md](PRIVACY.md).
 
 ## Attributions
 

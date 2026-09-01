@@ -27,6 +27,10 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test
+      # The Edge Function builds prompts from copies of src/shared. If those
+      # copies fall behind, the server would brief the model differently from
+      # what this repo says — fail the build rather than ship that.
+      - run: npm run sync:shared:check
 
   build:
     name: Build bundle (Windows)
