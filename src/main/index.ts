@@ -7,6 +7,7 @@ import { registerFoodIPC } from './ipc/food.ipc'
 import { registerPlanIPC } from './ipc/plan.ipc'
 import { registerProfileIPC } from './ipc/profile.ipc'
 import { registerAiIPC } from './ipc/ai.ipc'
+import { registerAuthIPC } from './ipc/auth.ipc'
 import { registerLogIPC } from './ipc/log.ipc'
 import { registerQuickAddIPC } from './ipc/quickadd.ipc'
 import { registerFavoritesIPC } from './ipc/favorites.ipc'
@@ -16,6 +17,7 @@ import { registerExerciseIPC } from './ipc/exercise.ipc'
 import { registerRemindersIPC } from './ipc/reminders.ipc'
 import { startReminders } from './services/reminders.service'
 import { initUpdater, registerUpdaterIPC } from './services/updater.service'
+import { registerProtocol, initAuthCallbacks } from './services/auth.service'
 
 // Logging & global crash handling
 log.initialize()
@@ -51,6 +53,16 @@ function installIpcErrorLogging(): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }) as any
 }
+
+// Held at module scope so the OAuth callback can reach the window from outside
+// whenReady — the callback can arrive before or after the window exists.
+let mainWindow: BrowserWindow | null = null
+
+// Both must run before whenReady: the single-instance lock has to be claimed
+// before a callback launch can race it, and the protocol has to be registered
+// for the OS to route nutrition-planner:// back here at all.
+registerProtocol()
+initAuthCallbacks(() => mainWindow)
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -144,6 +156,7 @@ app.whenReady().then(() => {
   registerPlanIPC()
   registerProfileIPC()
   registerAiIPC()
+  registerAuthIPC()
   registerLogIPC()
   registerQuickAddIPC()
   registerFavoritesIPC()
@@ -155,7 +168,7 @@ app.whenReady().then(() => {
   registerUpdaterIPC()
   startReminders()
 
-  const mainWindow = createWindow()
+  mainWindow = createWindow()
   initUpdater(mainWindow)
 
   app.on('activate', () => {
