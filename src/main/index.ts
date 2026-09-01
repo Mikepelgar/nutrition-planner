@@ -17,7 +17,7 @@ import { registerRemindersIPC } from './ipc/reminders.ipc'
 import { startReminders } from './services/reminders.service'
 import { initUpdater, registerUpdaterIPC } from './services/updater.service'
 
-// ── Logging & global crash handling ─────────────────────────────────────────
+// Logging & global crash handling
 log.initialize()
 log.transports.file.level = 'info'
 log.transports.console.level = is.dev ? 'debug' : 'warn'

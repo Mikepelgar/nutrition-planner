@@ -64,7 +64,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     set({ messages: [...messages, userMsg, assistantMsg], isStreaming: true, currentDate: date })
 
-    // Clean up old listeners
     removeChunkListener?.()
     removeDoneListener?.()
     removeErrorListener?.()

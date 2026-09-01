@@ -1,6 +1,6 @@
 import type { FoodDetail, FoodPortion, ServingUnit } from './types'
 
-// ── Branded unit-code normalisation ─────────────────────────────────────────
+// Branded unit-code normalisation
 // USDA branded data uses inconsistent codes: "GRM"/"GM" for grams, "MLT" for ml, etc.
 const UNIT_CODE_MAP: Record<string, ServingUnit> = {
   g: 'g', grm: 'g', gm: 'g',
@@ -18,7 +18,7 @@ export function normalizeSizeUnit(raw: string): ServingUnit | null {
   return UNIT_CODE_MAP[raw.toLowerCase().trim()] ?? null
 }
 
-// ── Smart serving defaults ───────────────────────────────────────────────────
+// Smart serving defaults
 const EGG_WORDS     = ['egg']
 const LIQUID_WORDS  = ['milk', 'juice', 'beverage', 'drink', 'broth', 'stock', 'tea', 'coffee', 'water', 'soda', 'smoothie', 'lemonade', 'cider']
 const PROTEIN_WORDS = ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'veal', 'bison', 'venison', 'fish', 'salmon', 'tuna', 'shrimp', 'cod', 'tilapia', 'halibut', 'steak', 'breast', 'thigh', 'drumstick', 'loin', 'sirloin', 'ribeye', 'tenderloin']

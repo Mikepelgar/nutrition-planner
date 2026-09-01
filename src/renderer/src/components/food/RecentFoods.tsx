@@ -86,7 +86,6 @@ export function RecentFoods({ mode }: Props) {
         servingAmount: item.servingAmount,
         grams: item.grams
       })
-      // Remove from the favorites list if we're in favorites mode and just unstarred
       if (mode === 'favorites' && !isFavorite) {
         setItems(prev => prev.filter(i => i.fdcId !== item.fdcId))
       }
