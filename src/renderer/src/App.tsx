@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { LayoutDashboard, CalendarDays, MessageSquare, Settings, BarChart2, Dumbbell, TrendingUp, CalendarRange, X } from 'lucide-react'
 import { useProfileStore } from './store/useProfileStore'
 import { usePlanStore } from './store/usePlanStore'
-import { HomePage } from './pages/HomePage'
 import { DashboardPage } from './pages/DashboardPage'
+import { AddPage } from './pages/AddPage'
 import { ChatPage } from './pages/ChatPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { LogPage } from './pages/LogPage'
+import { HistoryPage } from './pages/HistoryPage'
 import { ProgressPage } from './pages/ProgressPage'
 import { ExercisePage } from './pages/ExercisePage'
 import { PlannerPage } from './pages/PlannerPage'
@@ -105,9 +105,9 @@ export default function App() {
       {/* Main content */}
       <main className="flex-1 min-w-0 overflow-hidden">
         <ErrorBoundary key={tab}>
-          {tab === 'home' && <HomePage onNavigate={(t) => setTab(t as Tab)} />}
-          {tab === 'add' && <DashboardPage />}
-          {tab === 'log' && <LogPage />}
+          {tab === 'home' && <DashboardPage onNavigate={(t) => setTab(t as Tab)} />}
+          {tab === 'add' && <AddPage />}
+          {tab === 'log' && <HistoryPage />}
           {tab === 'progress' && <ProgressPage />}
           {tab === 'exercise' && <ExercisePage />}
           {tab === 'planner' && <PlannerPage onNavigate={(t) => setTab(t as Tab)} />}

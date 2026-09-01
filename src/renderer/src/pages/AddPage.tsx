@@ -18,7 +18,7 @@ const FOOD_TABS: { id: FoodTab; label: string }[] = [
   { id: 'favorites', label: '★ Faves' },
 ]
 
-export function DashboardPage() {
+export function AddPage() {
   const { date, entries, loading, loadDay, nutrientTotals, copyFrom } = usePlanStore()
   const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()

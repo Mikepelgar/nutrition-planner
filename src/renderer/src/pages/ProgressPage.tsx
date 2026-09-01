@@ -36,11 +36,9 @@ export function ProgressPage() {
   const proteinLine = asc.map((l) => ({ label: mmdd(l.date), value: l.proteinG }))
   const waterBars = waters.map((w) => ({ label: mmdd(w.date), value: w.ml }))
 
-  // Goals
   const latest = weights.at(-1)
   const projection = projectTimeToGoal(weights, profile?.goalWeightKg)
 
-  // Achievements (computed over the loaded window)
   const foodsLogged = logs.reduce((s, l) => s + l.entryCount, 0)
   const daysOnTarget = macroTargets
     ? logs.filter((l) => Math.abs(l.calories - macroTargets.calories) <= macroTargets.calories * 0.1).length
