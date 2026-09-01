@@ -6,3 +6,6 @@ resources/usda-raw/
 resources/*.db
 *.tsbuildinfo
 scripts/*.png
+CLAUDE.md
+PROJECT_OVERVIEW.md
+docs/
