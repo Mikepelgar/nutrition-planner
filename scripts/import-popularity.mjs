@@ -24,7 +24,7 @@ const OFF_URL   = 'https://static.openfoodfacts.org/data/en.openfoodfacts.org.pr
 const MIN_SCANS  = 5      // ignore products with fewer scans (noise filter)
 const BATCH_SIZE = 2000
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function findBrandedCsv() {
   const dir = join(RAW_DIR, 'extracted', 'branded')
@@ -96,7 +96,7 @@ async function downloadFile(url, dest) {
   console.log(`\n  Saved to ${dest}`)
 }
 
-// ── main ─────────────────────────────────────────────────────────────────────
+// Main
 
 console.log('Opening database:', DB_PATH)
 const db = new Database(DB_PATH)
@@ -104,7 +104,7 @@ db.pragma('journal_mode = WAL')
 db.pragma('synchronous  = NORMAL')
 db.pragma('busy_timeout = 30000')
 
-// ── Phase 1: schema migration ────────────────────────────────────────────────
+// Phase 1: schema migration
 console.log('\n[1/5] Ensuring schema columns exist …')
 try { db.exec('ALTER TABLE food ADD COLUMN gtin_upc TEXT') }
 catch { /* already exists */ }
@@ -112,7 +112,7 @@ try { db.exec('ALTER TABLE food ADD COLUMN popularity_score INTEGER NOT NULL DEF
 catch { /* already exists */ }
 console.log('  OK')
 
-// ── Phase 2: USDA GTIN population ────────────────────────────────────────────
+// Phase 2: USDA GTIN population
 const brandedCsv = findBrandedCsv()
 if (!brandedCsv) {
   console.error('ERROR: branded_food.csv not found. Run import-usda.mjs branded first.')
@@ -140,7 +140,7 @@ console.log(`\r  ${gtinTotal.toLocaleString()} GTINs written`)
 db.exec('CREATE INDEX IF NOT EXISTS idx_food_gtin ON food(gtin_upc) WHERE gtin_upc IS NOT NULL')
 console.log('  GTIN index created')
 
-// ── Phase 3: download Open Food Facts ────────────────────────────────────────
+// Phase 3: download Open Food Facts
 console.log('\n[3/5] Open Food Facts …')
 if (existsSync(OFF_GZ)) {
   console.log(`  Already cached: ${OFF_GZ}`)
@@ -148,7 +148,7 @@ if (existsSync(OFF_GZ)) {
   await downloadFile(OFF_URL, OFF_GZ)
 }
 
-// ── Phase 4: parse OFF → popularity_score ────────────────────────────────────
+// Phase 4: parse OFF → popularity_score
 console.log('\n[4/5] Streaming Open Food Facts CSV (10–20 min) …')
 
 // Load gtin → scanCount into memory (~50–100 MB for 1–2M qualifying products)
@@ -188,7 +188,7 @@ for (const [gtin, score] of gtinScores) {
 if (buf.length) { flushScores(buf); scoreUpdates += buf.length }
 console.log(`  ${scoreUpdates.toLocaleString()} branded foods scored`)
 
-// ── Phase 5: score USDA whole foods by portion count ─────────────────────────
+// Phase 5: score USDA whole foods by portion count
 console.log('\n[5/5] Scoring USDA whole foods by portion-definition count …')
 db.exec(`
   UPDATE food
@@ -204,7 +204,7 @@ const { n: usdaScored } = db.prepare(`
 `).get()
 console.log(`  ${usdaScored} USDA foods scored (max 900, step 30 per defined portion)`)
 
-// ── Final: index + analyze ────────────────────────────────────────────────────
+// Final: index + analyze
 console.log('\nBuilding popularity index …')
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_food_popularity

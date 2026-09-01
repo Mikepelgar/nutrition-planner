@@ -10,7 +10,6 @@
 import type { UserProfile, Goal, SuggestionStyle, DietType, MealType } from '../renderer/src/lib/types'
 import { calcTDEE, calcMacroTargets, DIET_RULES, DIET_LABELS } from './macros'
 
-// ---------------------------------------------------------------------------
 // Types
 
 export interface CoachContext {
@@ -88,7 +87,6 @@ export interface CoachContextInputs {
   nutrientStatuses: NutrientStatusInput[]
 }
 
-// ---------------------------------------------------------------------------
 // Labels / hints
 
 export const ALLERGEN_LABELS: Record<string, string> = {
@@ -123,7 +121,6 @@ function dietRationale(dietType: DietType | null | undefined): string {
   return 'Protein is set by the goal, fat is ~25% of calories, and carbs fill the remainder.'
 }
 
-// ---------------------------------------------------------------------------
 // Prompt-injection hygiene: user-typed text (food names, avoid-foods) is data,
 // never instructions. Sanitize it and fence it in labeled blocks the system
 // prompt tells the model to treat as data only.
@@ -140,7 +137,6 @@ export function fenceUserData(name: string, lines: string[]): string {
   return `<user_data name="${name}">\n${lines.join('\n')}\n</user_data>`
 }
 
-// ---------------------------------------------------------------------------
 // Context assembly
 
 export function buildCoachContext(inputs: CoachContextInputs): CoachContext {
@@ -205,7 +201,6 @@ export function buildCoachContext(inputs: CoachContextInputs): CoachContext {
   }
 }
 
-// ---------------------------------------------------------------------------
 // System prompt
 
 export function renderModeInstructions(goal: CoachContext['goal'], proteinG?: number | null): string {
@@ -347,7 +342,6 @@ export function buildSystemPrompt(ctx: CoachContext): string {
   ].join('\n')
 }
 
-// ---------------------------------------------------------------------------
 // Per-turn "today so far" snapshot
 
 const MAX_LISTED_ITEMS = 20
@@ -393,7 +387,6 @@ export function renderTodaySnapshot(ctx: CoachContext): string {
   return lines.join('\n')
 }
 
-// ---------------------------------------------------------------------------
 // History + token budgeting
 
 export const MAX_HISTORY_TURNS = 12
@@ -431,7 +424,6 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4)
 }
 
-// ---------------------------------------------------------------------------
 // Message builders — provider-neutral. The ONLY per-provider difference
 // (Anthropic top-level `system` vs OpenAI role:'system') lives in streamChat.
 

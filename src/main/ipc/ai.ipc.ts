@@ -316,13 +316,10 @@ export function registerAiIPC(): void {
         }
       }
     }
-    // Always save the provider preference
     setSetting(db, 'ai_provider', payload.provider)
-    // Save the key if provided (Ollama doesn't need one)
     if (key) {
       setSetting(db, `${payload.provider}_api_key`, encryptSetting(key))
     }
-    // Save or clear model override
     if (payload.model?.trim()) {
       setSetting(db, 'ai_model', payload.model.trim())
     } else {
