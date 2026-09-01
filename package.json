@@ -19,16 +19,21 @@
     "db:download": "node scripts/download-usda.mjs",
     "db:import": "node scripts/import-usda.mjs",
     "db:verify": "node scripts/verify-db.mjs",
-    "db:popularity": "node scripts/import-popularity.mjs"
+    "db:popularity": "node scripts/import-popularity.mjs",
+    "sync:shared": "node scripts/sync-shared.mjs",
+    "sync:shared:check": "node scripts/sync-shared.mjs --check",
+    "supabase:start": "supabase start",
+    "supabase:serve": "supabase functions serve ai-chat --env-file supabase/.env.local",
+    "supabase:deploy": "npm run sync:shared && supabase functions deploy ai-chat",
+    "supabase:push": "supabase db push"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.52.0",
     "@electron-toolkit/utils": "^4.0.0",
+    "@supabase/supabase-js": "^2.112.4",
     "better-sqlite3": "^12.10.0",
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.9",
     "lucide-react": "^0.469.0",
-    "openai": "^6.42.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -52,6 +57,7 @@
     "prettier": "^3.8.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "supabase": "^2.116.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.61.0",
