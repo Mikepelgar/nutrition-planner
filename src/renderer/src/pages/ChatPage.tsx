@@ -46,23 +46,17 @@ export function ChatPage({ onGoToSettings }: Props) {
   const profileGoal = useProfileStore(s => s.profile?.goal)
   const didInitMode = useRef(false)
   const [input, setInput] = useState('')
-  const [hasKey, setHasKey] = useState<boolean | null>(null)
-  const [keySource, setKeySource] = useState<'builtin' | 'custom'>('custom')
-  const [usage, setUsage] = useState<
-    { dailyUsed: number; dailyLimit: number; monthlyUsed: number; monthlyLimit: number } | undefined
-  >(undefined)
-  const [builtinAvailable, setBuiltinAvailable] = useState(true)
+  const [ai, setAi] = useState<{
+    configured: boolean
+    signedIn: boolean
+    usage: { dailyUsed: number; dailyLimit: number; monthlyUsed: number; monthlyLimit: number } | null
+  } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const wasStreamingRef = useRef(false)
 
   function refreshAiStatus() {
-    window.api.aiHasKey().then(res => {
-      setHasKey(res.hasKey)
-      setKeySource(res.keySource)
-      setUsage(res.usage)
-      setBuiltinAvailable(res.builtinAvailable)
-    })
+    window.api.aiStatus().then(setAi)
   }
 
   // Check AI access status every time this tab is opened (component mounts on tab switch)
@@ -70,7 +64,7 @@ export function ChatPage({ onGoToSettings }: Props) {
     refreshAiStatus()
   }, [])
 
-  // Built-in AI usage changes with every exchange — refresh the displayed
+  // Usage changes with every exchange — refresh the displayed
   // count/limit state right after each stream completes (or errors out),
   // i.e. on the isStreaming: true → false transition.
   useEffect(() => {
@@ -86,7 +80,11 @@ export function ChatPage({ onGoToSettings }: Props) {
     }
   }, [profileGoal, setMode])
 
-  const limitReached = keySource === 'builtin' && !!usage && usage.dailyUsed >= usage.dailyLimit
+  // Display only. The real gate is consume_ai_quota() on the server; this just
+  // avoids offering a send that is going to come back refused.
+  const usage = ai?.usage ?? null
+  const limitReached = !!usage && usage.dailyUsed >= usage.dailyLimit
+  const canSend = ai?.configured === true && ai.signedIn && !limitReached
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -155,15 +153,19 @@ export function ChatPage({ onGoToSettings }: Props) {
       <ContextPanel date={date} mode={mode} style={style} budgetMode={budgetMode} easyPrepMode={easyPrepMode} />
 
       {/* AI access status banner — exactly one of these variants applies */}
-      {((keySource === 'custom' && hasKey === false) ||
-        (keySource === 'builtin' && !builtinAvailable && hasKey === false)) && (
+      {ai && !ai.configured && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-950/60 border-b border-amber-800/50">
           <KeyRound size={14} className="text-amber-400 shrink-0" />
           <p className="text-xs text-amber-300 flex-1">
-            {keySource === 'builtin' && !builtinAvailable
-              ? "Built-in AI isn't available in this build — add your own API key to use AI Chat."
-              : 'No API key configured.'}
+            This build has no AI service configured. Every other feature works normally.
           </p>
+        </div>
+      )}
+
+      {ai?.configured && !ai.signedIn && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-950/60 border-b border-amber-800/50">
+          <KeyRound size={14} className="text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300 flex-1">Sign in to use AI coaching.</p>
           <button
             onClick={onGoToSettings}
             className="text-xs font-medium text-amber-400 hover:text-amber-200 underline underline-offset-2 transition-colors shrink-0"
@@ -173,34 +175,21 @@ export function ChatPage({ onGoToSettings }: Props) {
         </div>
       )}
 
-      {keySource === 'builtin' && builtinAvailable && usage && !limitReached && (
+      {ai?.signedIn && usage && !limitReached && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-sky-950/60 border-b border-sky-800/50">
           <Sparkles size={14} className="text-sky-400 shrink-0" />
           <p className="text-xs text-sky-300 flex-1">
-            Using built-in AI · {usage.dailyUsed}/{usage.dailyLimit} messages today
+            {usage.dailyUsed}/{usage.dailyLimit} messages today
           </p>
-          <button
-            onClick={onGoToSettings}
-            className="text-xs font-medium text-sky-400 hover:text-sky-200 underline underline-offset-2 transition-colors shrink-0"
-          >
-            Add your own key for unlimited →
-          </button>
         </div>
       )}
 
-      {keySource === 'builtin' && builtinAvailable && limitReached && usage && (
+      {ai?.signedIn && limitReached && usage && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-red-950/60 border-b border-red-800/50">
           <AlertCircle size={14} className="text-red-400 shrink-0" />
           <p className="text-xs text-red-300 flex-1">
-            Daily limit reached for built-in AI ({usage.dailyUsed}/{usage.dailyLimit}). Add your own key
-            in Settings for unlimited access, or try again tomorrow.
+            Daily limit reached ({usage.dailyUsed}/{usage.dailyLimit}). The allowance resets at midnight UTC.
           </p>
-          <button
-            onClick={onGoToSettings}
-            className="text-xs font-medium text-red-400 hover:text-red-200 underline underline-offset-2 transition-colors shrink-0"
-          >
-            Open Settings →
-          </button>
         </div>
       )}
 
@@ -234,13 +223,13 @@ export function ChatPage({ onGoToSettings }: Props) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isStreaming || !hasKey || limitReached}
+            disabled={isStreaming || !canSend}
             rows={1}
             placeholder={
               limitReached
-                ? 'Daily limit reached — see Settings'
-                : hasKey === false
-                  ? 'API key required — see Settings'
+                ? 'Daily limit reached — resets at midnight UTC'
+                : ai?.signedIn === false
+                  ? 'Sign in to use AI — see Settings'
                   : 'Ask about your nutrition…'
             }
             className="flex-1 resize-none bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded-xl px-3 py-2.5 placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/50 max-h-32 overflow-y-auto disabled:opacity-60"
@@ -251,7 +240,7 @@ export function ChatPage({ onGoToSettings }: Props) {
               <Square size={14} />
             </Button>
           ) : (
-            <Button size="sm" onClick={handleSend} disabled={!input.trim() || !hasKey || limitReached} aria-label="Send message">
+            <Button size="sm" onClick={handleSend} disabled={!input.trim() || !canSend} aria-label="Send message">
               <Send size={14} />
             </Button>
           )}

@@ -6,16 +6,18 @@ export default defineConfig(({ mode }) => {
   // Loads .env / .env.[mode] files plus already-exported process env vars
   // (so CI/release pipelines can inject the secret without a .env on disk).
   const env = loadEnv(mode, process.cwd(), '')
-  const builtinKey = JSON.stringify(env.BUILTIN_ANTHROPIC_API_KEY ?? '')
 
   return {
     main: {
       plugins: [externalizeDepsPlugin()],
       define: {
-        // Compiled into the main bundle ONLY — never the renderer (which is
-        // far more inspectable via DevTools). Empty string in dev builds
-        // where the env var isn't set; getApiKey() falls back gracefully.
-        __BUILTIN_API_KEY__: builtinKey
+        // Supabase project coordinates. Both are publishable — the anon key
+        // grants only what the RLS policies allow — so unlike the provider key
+        // these replaced, there is nothing here worth extracting from a build.
+        // Empty in a from-source build with no .env; the app reports AI as
+        // unconfigured rather than failing at the first request.
+        __SUPABASE_URL__: JSON.stringify(env.SUPABASE_URL ?? ''),
+        __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? '')
       }
     },
     preload: {

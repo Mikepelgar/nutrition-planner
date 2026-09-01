@@ -16,10 +16,6 @@ import type { FavoriteItem } from '../main/db/queries/favorites.queries'
 import type { CoachContext, ChatTurn } from '../shared/aiContext'
 import type { AiErrorCode } from '../shared/aiErrors'
 
-type AiProvider =
-  | 'anthropic' | 'openai' | 'groq' | 'deepseek' | 'mistral'
-  | 'gemini' | 'xai' | 'perplexity' | 'together' | 'ollama'
-
 declare global {
   interface Window {
     api: {
@@ -77,16 +73,15 @@ declare global {
         budgetMode?: boolean
         easyPrepMode?: boolean
       }): Promise<CoachContext>
-      aiSaveKey(payload: { provider: AiProvider; key: string; model?: string }): Promise<{ success: boolean; error?: string }>
-      aiSetKeySource(payload: { source: 'builtin' | 'custom' }): Promise<{ success: boolean }>
-      aiHasKey(): Promise<{
-        hasKey: boolean
-        provider: AiProvider
-        model: string
-        keySource: 'builtin' | 'custom'
-        usage?: { dailyUsed: number; dailyLimit: number; monthlyUsed: number; monthlyLimit: number }
-        builtinAvailable: boolean
+      aiStatus(): Promise<{
+        configured: boolean
+        signedIn: boolean
+        usage: { dailyUsed: number; dailyLimit: number; monthlyUsed: number; monthlyLimit: number } | null
       }>
+
+      authSignIn(payload: { provider: 'google' | 'github' }): Promise<{ success: boolean }>
+      authSignOut(): Promise<{ success: boolean }>
+      authStatus(): Promise<{ signedIn: boolean; email: string | null; configured: boolean }>
 
       quickAddGetRecent(payload?: { cutoffDate?: string }): Promise<QuickAddItem[]>
       favoritesGet(): Promise<FavoriteItem[]>
@@ -122,6 +117,7 @@ declare global {
       onAiChunk(cb: (data: { messageId: string; chunk: string }) => void): () => void
       onAiDone(cb: (data: { messageId: string }) => void): () => void
       onAiError(cb: (data: { messageId: string; code: AiErrorCode; message: string }) => void): () => void
+      onAuthChanged(cb: (data: { signedIn: boolean; email?: string | null; error?: string }) => void): () => void
     }
   }
 }

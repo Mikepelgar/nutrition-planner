@@ -3,10 +3,9 @@ import log from 'electron-log/main'
 import { getDb } from './database'
 
 /**
- * Shared helpers for the `settings` key/value table — extracted from
- * ai.ipc.ts so both the AI IPC layer and the built-in usage tracker
- * (ai-usage.service.ts) can read/write without duplicating the
- * encryption logic.
+ * Shared helpers for the `settings` key/value table. The encrypt/decrypt pair
+ * is what backs the Supabase session storage adapter in supabase.ts, so the
+ * refresh token gets the same at-rest treatment provider keys used to.
  */
 
 export function getSetting(db: ReturnType<typeof getDb>, key: string): string | null {

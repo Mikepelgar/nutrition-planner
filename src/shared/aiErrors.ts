@@ -5,13 +5,12 @@
  */
 
 export type AiErrorCode =
-  | 'NO_KEY' // no custom key saved and no built-in key compiled in
-  | 'BAD_KEY' // provider rejected the key (401/403)
-  | 'RATE_LIMIT' // provider 429
-  | 'PROVIDER_DOWN' // provider 5xx
-  | 'NETWORK' // could not reach the provider (also Ollama not running)
+  | 'NOT_SIGNED_IN' // no account session; AI runs through the hosted proxy
+  | 'LIMIT_REACHED' // per-account quota exhausted (enforced server-side)
+  | 'PROVIDER_DOWN' // the proxy could not reach the model provider
+  | 'NETWORK' // could not reach the proxy at all
+  | 'UNCONFIGURED' // build has no Supabase credentials compiled in
   | 'ABORTED' // user cancelled the stream
-  | 'LIMIT_REACHED' // app-level soft cap on the built-in key
   | 'UNKNOWN'
 
 export interface AiErrorPayload {
@@ -20,13 +19,11 @@ export interface AiErrorPayload {
 }
 
 export const AI_ERROR_MESSAGES: Record<AiErrorCode, string> = {
-  NO_KEY: 'No API key set. Add one in Settings → AI.',
-  BAD_KEY:
-    "The provider rejected your API key. Check in Settings that the key matches the selected provider (e.g. an OpenAI key won't work with Anthropic).",
-  RATE_LIMIT: 'The AI provider is rate-limiting requests. Wait a minute and try again.',
-  PROVIDER_DOWN: 'The AI provider is having trouble right now. Try again shortly.',
-  NETWORK: 'Could not reach the AI provider. Check your internet connection (or that Ollama is running).',
+  NOT_SIGNED_IN: 'Sign in to use AI features. Settings → AI.',
+  LIMIT_REACHED: "You've used all your AI messages for now. The daily allowance resets at midnight UTC.",
+  PROVIDER_DOWN: 'The AI service is having trouble right now. Try again shortly.',
+  NETWORK: 'Could not reach the AI service. Check your internet connection.',
+  UNCONFIGURED: 'This build has no AI service configured. See README → AI configuration.',
   ABORTED: 'Response stopped.',
-  LIMIT_REACHED: 'Daily limit reached for built-in AI. Add your own API key in Settings for unlimited access.',
   UNKNOWN: 'Something went wrong talking to the AI. Try again.'
 }
