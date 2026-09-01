@@ -18,7 +18,7 @@ export function ChatMessage({ msg, onGoToSettings }: Props) {
             <AlertCircle size={14} className="shrink-0 mt-0.5" />
             <div>
               <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-              {(msg.errorCode === 'NO_KEY' || msg.errorCode === 'LIMIT_REACHED' || msg.errorCode === 'BAD_KEY') &&
+              {(msg.errorCode === 'NOT_SIGNED_IN' || msg.errorCode === 'LIMIT_REACHED') &&
                 onGoToSettings && (
                   <button
                     onClick={onGoToSettings}

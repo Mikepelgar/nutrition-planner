@@ -49,12 +49,16 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('ai:planDay', payload),
   aiGetContext: (payload: { date: string; mode: string; style: string; budgetMode?: boolean; easyPrepMode?: boolean }) =>
     ipcRenderer.invoke('ai:getContext', payload),
-  aiSaveKey: (payload: { provider: string; key: string; model?: string }) =>
-    ipcRenderer.invoke('ai:saveKey', payload),
-  aiSetKeySource: (payload: { source: 'builtin' | 'custom' }) =>
-    ipcRenderer.invoke('ai:setKeySource', payload),
-  aiHasKey: () =>
-    ipcRenderer.invoke('ai:hasKey'),
+  aiStatus: () =>
+    ipcRenderer.invoke('ai:status'),
+
+  // Account (AI runs through the hosted proxy, which needs a signed-in user)
+  authSignIn: (payload: { provider: 'google' | 'github' }) =>
+    ipcRenderer.invoke('auth:signIn', payload),
+  authSignOut: () =>
+    ipcRenderer.invoke('auth:signOut'),
+  authStatus: () =>
+    ipcRenderer.invoke('auth:status'),
 
   // Quick Add
   quickAddGetRecent: (payload?: { cutoffDate?: string }) =>
@@ -140,5 +144,13 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (_: unknown, data: { messageId: string; code: string; message: string }) => cb(data)
     ipcRenderer.on('ai:error', handler)
     return () => ipcRenderer.removeListener('ai:error', handler)
+  },
+
+  // Sign-in completes out of band — the OAuth callback returns through the OS,
+  // not through the invoke that opened the browser.
+  onAuthChanged: (cb: (data: { signedIn: boolean; email?: string | null; error?: string }) => void) => {
+    const handler = (_: unknown, data: { signedIn: boolean; email?: string | null; error?: string }) => cb(data)
+    ipcRenderer.on('auth:changed', handler)
+    return () => ipcRenderer.removeListener('auth:changed', handler)
   }
 })
