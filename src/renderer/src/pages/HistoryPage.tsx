@@ -7,7 +7,7 @@ import { buildNutrientProgress } from '../lib/nutrientProgress'
 import type { NutrientProgressData } from '../lib/types'
 import { fmt, localIso, shiftDate, todayIso } from '../lib/formatters'
 
-// ─── types ───────────────────────────────────────────────────────────────────
+// Types
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
@@ -51,7 +51,7 @@ interface SubItem {
   carbsG: number
 }
 
-// ─── date helpers ─────────────────────────────────────────────────────────────
+// Date helpers
 
 function weekMonday(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number)
@@ -79,7 +79,7 @@ function avg(vals: number[]) {
   return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : 0
 }
 
-// ─── aggregation ──────────────────────────────────────────────────────────────
+// Aggregation
 
 function buildDailyItems(entries: DailyEntry[]): LogItem[] {
   return entries.map(e => ({
@@ -230,7 +230,7 @@ function buildYearlyItems(entries: DailyEntry[]): LogItem[] {
     })
 }
 
-// ─── sub-item row ─────────────────────────────────────────────────────────────
+// Sub-item row
 
 function SubRow({ item, calTarget }: { item: SubItem; calTarget: number }) {
   const ratio = calTarget > 0 ? item.calories / calTarget : 0
@@ -252,7 +252,7 @@ function SubRow({ item, calTarget }: { item: SubItem; calTarget: number }) {
   )
 }
 
-// ─── main log item card ───────────────────────────────────────────────────────
+// Main log item card
 
 interface LogItemCardProps {
   item: LogItem
@@ -352,7 +352,7 @@ function LogItemCard({ item, calTarget, expanded, onToggle, nutrientData, loadin
   )
 }
 
-// ─── page ─────────────────────────────────────────────────────────────────────
+// Page
 
 const PERIODS: { id: Period; label: string }[] = [
   { id: 'daily',   label: 'Daily' },
@@ -361,7 +361,7 @@ const PERIODS: { id: Period; label: string }[] = [
   { id: 'yearly',  label: 'Yearly' },
 ]
 
-export function LogPage() {
+export function HistoryPage() {
   const { macroTargets, profile } = useProfileStore()
   const [period, setPeriod] = useState<Period>('daily')
   const [logs, setLogs] = useState<DailyEntry[]>([])
@@ -374,7 +374,6 @@ export function LogPage() {
 
   const calTarget = macroTargets?.calories ?? 2000
 
-  // Load daily log data whenever period changes
   useEffect(() => {
     setLoading(true)
     setExpandedKey(null)
@@ -391,7 +390,6 @@ export function LogPage() {
       .finally(() => setLoading(false))
   }, [period])
 
-  // Build period items from daily data
   const items = useMemo<LogItem[]>(() => {
     if (period === 'daily')   return buildDailyItems(logs)
     if (period === 'weekly')  return buildWeeklyItems(logs)
@@ -399,7 +397,6 @@ export function LogPage() {
     return buildYearlyItems(logs)
   }, [logs, period])
 
-  // Lazy-load nutrient breakdown when a row is expanded
   const handleToggle = useCallback((item: LogItem) => {
     if (expandedKey === item.key) {
       setExpandedKey(null)

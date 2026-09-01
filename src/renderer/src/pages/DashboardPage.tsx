@@ -48,14 +48,13 @@ function MacroBar({ label, intake, target, color }: { label: string; intake: num
   )
 }
 
-export function HomePage({ onNavigate }: Props) {
+export function DashboardPage({ onNavigate }: Props) {
   const { nutrientTotals, date, loadDay } = usePlanStore()
   const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()
   const [burned, setBurned] = useState(0)
   const today = todayIso()
 
-  // Load today's calories burned on mount.
   useEffect(() => {
     window.api.exerciseCaloriesForDate({ date: today }).then(r => setBurned(r.calories))
   }, [])
