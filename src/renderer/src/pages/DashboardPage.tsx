@@ -1,220 +1,159 @@
-import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Flame, MessageSquare, Plus } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
 import { useProfileStore } from '../store/useProfileStore'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
-import { FoodSearch } from '../components/food/FoodSearch'
-import { RecentFoods, type FoodHistoryMode } from '../components/food/RecentFoods'
-import { PlanEntryRow } from '../components/plan/PlanEntry'
-import { NutrientPanel } from '../components/nutrients/NutrientPanel'
-import { Skeleton } from '../components/ui/Skeleton'
-import { fmt, fmtDate, shiftDate, todayIso } from '../lib/formatters'
+import { fmt, todayIso } from '../lib/formatters'
 
-type FoodTab = 'search' | FoodHistoryMode
+interface Props {
+  onNavigate?: (tab: string) => void
+}
 
-const FOOD_TABS: { id: FoodTab; label: string }[] = [
-  { id: 'search',    label: 'Search'  },
-  { id: 'history',   label: 'History' },
-  { id: 'favorites', label: '★ Faves' },
-]
+function CalorieRing({ intake, target }: { intake: number; target: number }) {
+  const pct = target > 0 ? Math.min(intake / target, 1) : 0
+  const r = 54
+  const circ = 2 * Math.PI * r
+  const over = intake > target
+  const color = over ? '#f59e0b' : '#10b981'
+  return (
+    <div className="relative w-[140px] h-[140px]">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 130 130">
+        <circle cx="65" cy="65" r={r} fill="none" stroke="#1f2937" strokeWidth="11" />
+        <circle
+          cx="65" cy="65" r={r} fill="none" stroke={color} strokeWidth="11" strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={circ * (1 - pct)}
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold text-gray-100">{fmt(intake, 0)}</span>
+        <span className="text-xs text-gray-500">/ {fmt(target, 0)} kcal</span>
+      </div>
+    </div>
+  )
+}
 
-export function DashboardPage() {
-  const { date, entries, loading, loadDay, nutrientTotals, copyFrom } = usePlanStore()
+function MacroBar({ label, intake, target, color }: { label: string; intake: number; target: number; color: string }) {
+  const pct = target > 0 ? Math.min((intake / target) * 100, 100) : 0
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-gray-400">{label}</span>
+        <span className="text-gray-500">{fmt(intake, 0)} / {fmt(target, 0)}g</span>
+      </div>
+      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: color }} />
+      </div>
+    </div>
+  )
+}
+
+export function HomePage({ onNavigate }: Props) {
+  const { nutrientTotals, date, loadDay } = usePlanStore()
   const { macroTargets } = useProfileStore()
   const nutrients = useNutrientTotals()
-  const [foodTab, setFoodTab] = useState<FoodTab>('search')
   const [burned, setBurned] = useState(0)
-  const [showCopy, setShowCopy] = useState(false)
+  const today = todayIso()
 
-  useEffect(() => { loadDay(date) }, [date])
-  useEffect(() => { window.api.exerciseCaloriesForDate({ date }).then(r => setBurned(r.calories)) }, [date])
+  // Load today's calories burned on mount.
+  useEffect(() => {
+    window.api.exerciseCaloriesForDate({ date: today }).then(r => setBurned(r.calories))
+  }, [])
 
-  const totalCal = nutrientTotals.find(n => n.nutrientId === 1008)?.intake ?? 0
+  // The dashboard is "today" focused — make sure today's plan is loaded.
+  useEffect(() => {
+    if (date !== todayIso()) loadDay(todayIso())
+  }, [])
 
-  const isToday = date === todayIso()
-  const dateInputRef = useRef<HTMLInputElement>(null)
+  const totalsMap = new Map(nutrientTotals.map(n => [n.nutrientId, n.intake]))
+  const intakeCal = totalsMap.get(1008) ?? 0
+  const proteinIn = totalsMap.get(1003) ?? 0
+  const carbsIn = totalsMap.get(1005) ?? 0
+  const fatIn = totalsMap.get(1004) ?? 0
+
+  // Top nutrient gaps: lowest % of RDI, excluding the macros/calories shown above.
+  const MACRO_IDS = new Set([1008, 1003, 1004, 1005])
+  const topGaps = [...nutrients]
+    .filter(n => !MACRO_IDS.has(n.nutrientId) && n.displayPercent < 100)
+    .sort((a, b) => a.displayPercent - b.displayPercent)
+    .slice(0, 4)
+
+  const remaining = macroTargets ? macroTargets.calories + burned - intakeCal : 0
 
   return (
-    <div className="flex h-full gap-0">
-      {/* Left panel: food log */}
-      <div className="flex flex-col w-[420px] shrink-0 border-r border-gray-800">
-
-        {/* Date navigator */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <button
-            onClick={() => loadDay(shiftDate(date, -1))}
-            className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
-            aria-label="Previous day"
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <div className="text-center relative">
-            <button
-              onClick={() => dateInputRef.current?.showPicker()}
-              className="text-sm font-semibold text-gray-200 hover:text-emerald-400 transition-colors"
-              title="Click to pick a date"
-            >
-              {fmtDate(date)}
-            </button>
-            <input
-              ref={dateInputRef}
-              type="date"
-              value={date}
-              onChange={e => e.target.value && loadDay(e.target.value)}
-              className="absolute inset-0 opacity-0 w-full pointer-events-none"
-              tabIndex={-1}
-            />
-            {!isToday && (
-              <button
-                onClick={() => loadDay(todayIso())}
-                className="block text-xs text-emerald-500 hover:text-emerald-400 mx-auto"
-              >
-                Back to today
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => loadDay(shiftDate(date, 1))}
-            className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
-            aria-label="Next day"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        {/* Copy a previous day's foods into this day — collapsed by default */}
-        <div className="flex items-center gap-2 px-4 py-1.5 border-b border-gray-800 text-xs">
-          {!showCopy ? (
-            <button
-              onClick={() => setShowCopy(true)}
-              className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
-              aria-expanded={false}
-            >
-              <Copy size={12} /> Copy from another day…
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={() => copyFrom(shiftDate(date, -1))}
-                className="flex items-center gap-1.5 text-gray-500 hover:text-emerald-400 transition-colors"
-                title="Copy the previous day's foods into this day"
-              >
-                <Copy size={12} /> Copy previous day
-              </button>
-              <span className="text-gray-700">·</span>
-              <label className="text-gray-500 flex items-center gap-1">
-                from
-                <input
-                  type="date"
-                  onChange={e => e.target.value && copyFrom(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 text-gray-300 rounded px-1.5 py-0.5 focus:outline-none focus:border-emerald-500"
-                />
-              </label>
-              <button
-                onClick={() => setShowCopy(false)}
-                className="ml-auto text-gray-500 hover:text-gray-300"
-                aria-label="Hide copy controls"
-              >
-                <X size={12} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Calorie summary (target includes calories burned via exercise) */}
-        {macroTargets && (() => {
-          const budget = macroTargets.calories + burned
-          return (
-            <div className="px-4 py-3 border-b border-gray-800">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-gray-500">Calories{burned > 0 ? ' (incl. exercise)' : ''}</span>
-                <span className="text-xs text-gray-400">
-                  {fmt(totalCal, 0)} / {fmt(budget, 0)} kcal
-                </span>
-              </div>
-              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    totalCal > budget ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${Math.min((totalCal / budget) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          )
-        })()}
-
-        {/* Food sub-tabs */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-800">
-          {FOOD_TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setFoodTab(t.id)}
-              className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                foodTab === t.id
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search tab */}
-        {foodTab === 'search' && (
-          <div className="px-4 py-3 border-b border-gray-800 relative z-10">
-            <FoodSearch />
-          </div>
-        )}
-
-        {/* History / Faves tabs */}
-        {(foodTab === 'history' || foodTab === 'favorites') && (
-          <div className="border-b border-gray-800">
-            <RecentFoods mode={foodTab} />
-          </div>
-        )}
-
-        {/* Food list — logged entries for this day */}
-        <div className="flex-1 overflow-y-auto">
-          {loading && Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-800">
-              <div className="flex-1 min-w-0 space-y-1.5">
-                <Skeleton className="h-3.5 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
-              <Skeleton className="h-6 w-6" />
-              <Skeleton className="h-6 w-6" />
-            </div>
-          ))}
-          {!loading && entries.length === 0 && (
-            <p className="text-sm text-gray-500 px-4 py-6 text-center">
-              No foods added yet.{' '}
-              {foodTab === 'search' ? 'Search above to get started.' : 'Tap + on a food above.'}
-            </p>
-          )}
-          {!loading && entries.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center px-4 py-1.5 bg-gray-900/60 border-b border-gray-800/60">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Logged</span>
-                <span className="text-xs text-gray-500">{fmt(totalCal, 0)} kcal</span>
-              </div>
-              {entries.map(entry => <PlanEntryRow key={entry.id} entry={entry} />)}
-            </div>
-          )}
-        </div>
+    <div className="h-full overflow-y-auto px-6 py-6 max-w-3xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-lg font-semibold text-gray-100">Dashboard</h1>
+        <p className="text-sm text-gray-500">Today's overview</p>
       </div>
 
-      {/* Right panel: nutrient bars */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-        <h2 className="text-sm font-semibold text-gray-400 mb-3 px-1">Nutrient Targets</h2>
-        {nutrients.length === 0 ? (
-          <p className="text-sm text-gray-500 px-1 py-4 text-center">Add foods to see your nutrient progress.</p>
-        ) : (
-          <NutrientPanel nutrients={nutrients} />
-        )}
+      {!macroTargets ? (
+        <p className="text-sm text-gray-500">Set up your profile in Settings to see your targets.</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Calories */}
+          <div className="bg-gray-900 rounded-xl p-5 flex items-center gap-5">
+            <CalorieRing intake={intakeCal} target={macroTargets.calories} />
+            <div className="space-y-1">
+              <div className="text-xs text-gray-500">Remaining</div>
+              <div className={`text-2xl font-bold ${remaining < 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {fmt(Math.abs(remaining), 0)}
+              </div>
+              <div className="text-xs text-gray-500">{remaining < 0 ? 'over target' : 'kcal left'}</div>
+              {burned > 0 && (
+                <div className="text-xs text-orange-400/90 flex items-center gap-1">
+                  <Flame size={11} /> +{fmt(burned, 0)} from exercise
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Macros */}
+          <div className="bg-gray-900 rounded-xl p-5 space-y-3">
+            <h2 className="text-sm font-medium text-gray-400">Macros</h2>
+            <MacroBar label="Protein" intake={proteinIn} target={macroTargets.proteinG} color="#34d399" />
+            <MacroBar label="Carbs" intake={carbsIn} target={macroTargets.carbsG} color="#60a5fa" />
+            <MacroBar label="Fat" intake={fatIn} target={macroTargets.fatG} color="#fbbf24" />
+          </div>
+
+          {/* Top gaps */}
+          <div className="bg-gray-900 rounded-xl p-5 space-y-3 md:col-span-2">
+            <h2 className="text-sm font-medium text-gray-400">Biggest nutrient gaps today</h2>
+            {topGaps.length === 0 ? (
+              <p className="text-xs text-gray-500">Log some foods to see where you stand.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+                {topGaps.map(n => (
+                  <div key={n.nutrientId}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-300">{n.name}</span>
+                      <span className="text-gray-500">{fmt(n.displayPercent, 0)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-emerald-500/80 rounded-full" style={{ width: `${Math.min(n.displayPercent, 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick actions */}
+      <div className="flex gap-3 mt-5">
+        <button
+          onClick={() => onNavigate?.('add')}
+          className="flex items-center gap-2 text-sm bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <Plus size={15} /> Log food
+        </button>
+        <button
+          onClick={() => onNavigate?.('chat')}
+          className="flex items-center gap-2 text-sm bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded-lg transition-colors"
+        >
+          <MessageSquare size={15} /> Ask the AI coach
+        </button>
       </div>
     </div>
   )
