@@ -17,7 +17,7 @@ import { registerExerciseIPC } from './ipc/exercise.ipc'
 import { registerRemindersIPC } from './ipc/reminders.ipc'
 import { startReminders } from './services/reminders.service'
 import { initUpdater, registerUpdaterIPC } from './services/updater.service'
-import { registerProtocol, initAuthCallbacks } from './services/auth.service'
+import { claimSingleInstance } from './services/auth.service'
 
 // Logging & global crash handling
 log.initialize()
@@ -54,15 +54,8 @@ function installIpcErrorLogging(): void {
   }) as any
 }
 
-// Held at module scope so the OAuth callback can reach the window from outside
-// whenReady — the callback can arrive before or after the window exists.
-let mainWindow: BrowserWindow | null = null
-
-// Both must run before whenReady: the single-instance lock has to be claimed
-// before a callback launch can race it, and the protocol has to be registered
-// for the OS to route nutrition-planner:// back here at all.
-registerProtocol()
-initAuthCallbacks(() => mainWindow)
+// Claimed before whenReady so a second launch exits before doing any work.
+const isPrimaryInstance = claimSingleInstance()
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -133,7 +126,9 @@ function applyContentSecurityPolicy(): void {
   })
 }
 
-app.whenReady().then(() => {
+// A second launch just focuses the running window and exits; running startup
+// here would be wasted work at best.
+if (isPrimaryInstance) app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.nutritionplanner.app')
 
   applyContentSecurityPolicy()
@@ -168,7 +163,7 @@ app.whenReady().then(() => {
   registerUpdaterIPC()
   startReminders()
 
-  mainWindow = createWindow()
+  const mainWindow = createWindow()
   initUpdater(mainWindow)
 
   app.on('activate', () => {

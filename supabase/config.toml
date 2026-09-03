@@ -155,14 +155,15 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "nutrition-planner://auth-callback"
+site_url = "http://127.0.0.1:54331/auth-callback"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# The desktop app has no web origin: OAuth returns through the OS protocol handler
-# registered by auth.service.ts. Keep this list exact — a wildcard here would let
-# any URL under the scheme receive an auth code.
-additional_redirect_urls = ["nutrition-planner://auth-callback"]
+# The desktop app receives the callback on a loopback listener (RFC 8252), not a
+# custom scheme — Chrome silently refuses to launch a custom scheme from a server
+# redirect. Keep this exact: a port wildcard would let any local listener receive
+# auth codes.
+additional_redirect_urls = ["http://127.0.0.1:54331/auth-callback"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
