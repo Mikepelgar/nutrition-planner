@@ -112,6 +112,36 @@ function runMigrations(database: Database.Database): void {
     )
   `)
 
+  // Core user-data tables. 001_schema.sql is not bundled into out/main, so these
+  // must exist inline or a userData DB that lacks them breaks the whole app.
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS plan (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      date       TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_plan_date ON plan(date);
+
+    CREATE TABLE IF NOT EXISTS plan_entry (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      plan_id          INTEGER NOT NULL REFERENCES plan(id) ON DELETE CASCADE,
+      fdc_id           INTEGER NOT NULL REFERENCES food(fdc_id),
+      food_description TEXT NOT NULL,
+      serving_unit     TEXT NOT NULL,
+      serving_amount   REAL NOT NULL,
+      grams            REAL NOT NULL,
+      position         INTEGER NOT NULL DEFAULT 0,
+      meal             TEXT NOT NULL DEFAULT 'snack',
+      created_at       TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_plan_entry_plan ON plan_entry(plan_id);
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `)
+
   // Weight and water tracking — one row per day (upserted).
   database.exec(`
     CREATE TABLE IF NOT EXISTS weight_log (

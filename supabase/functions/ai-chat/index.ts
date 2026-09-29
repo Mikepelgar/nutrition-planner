@@ -30,12 +30,18 @@ const MODEL = Deno.env.get('AI_MODEL') ?? 'gpt-5-mini'
 // instead of spending money. Unset in production.
 const OPENAI_BASE_URL = Deno.env.get('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1'
 
-/** A full-day plan needs more room than a chat turn; both are bounded here, not by the client. */
+/**
+ * A full-day plan needs more room than a chat turn; both are bounded here, not by
+ * the client. gpt-5 models count hidden reasoning against this budget, so it is
+ * sized with headroom and paired with a low REASONING_EFFORT — otherwise a large
+ * context can spend the whole budget thinking and stream back no text at all.
+ */
 const MAX_TOKENS: Record<string, number> = {
-  chat: 1024,
-  weekly_review: 1024,
-  meal_plan: 2048
+  chat: 16000,
+  weekly_review: 16000,
+  meal_plan: 16000
 }
+const REASONING_EFFORT = Deno.env.get('AI_REASONING_EFFORT') ?? 'minimal'
 
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
@@ -127,6 +133,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     body: JSON.stringify({
       model: MODEL,
       max_completion_tokens: MAX_TOKENS[request.feature],
+      reasoning_effort: REASONING_EFFORT,
       stream: true,
       messages: [{ role: 'system', content: built.system }, ...built.messages]
     }),

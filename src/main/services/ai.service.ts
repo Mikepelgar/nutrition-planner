@@ -48,7 +48,9 @@ function statusToCode(status: number): AiErrorCode {
 }
 
 /**
- * Reads an OpenAI-compatible SSE stream, emitting text deltas.
+ * Reads an OpenAI-compatible SSE stream, emitting text deltas. Resolves with
+ * whether any text arrived and the provider's finish_reason, so an empty reply
+ * can be reported instead of rendering as a blank message.
  *
  * Frames are not guaranteed to align with network chunks, so a partial line is
  * held back and prepended to the next read rather than being parsed and lost.
@@ -57,10 +59,12 @@ async function readSse(
   body: ReadableStream<Uint8Array>,
   onChunk: (text: string) => void,
   signal: AbortSignal
-): Promise<void> {
+): Promise<{ gotText: boolean; finishReason: string | null }> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let gotText = false
+  let finishReason: string | null = null
 
   while (!signal.aborted) {
     const { done, value } = await reader.read()
@@ -73,15 +77,21 @@ async function readSse(
     for (const line of lines) {
       if (!line.startsWith('data:')) continue
       const payload = line.slice(5).trim()
-      if (payload === '[DONE]') return
+      if (payload === '[DONE]') return { gotText, finishReason }
       try {
-        const delta = JSON.parse(payload)?.choices?.[0]?.delta?.content
-        if (delta) onChunk(delta)
+        const choice = JSON.parse(payload)?.choices?.[0]
+        const delta = choice?.delta?.content
+        if (delta) {
+          gotText = true
+          onChunk(delta)
+        }
+        if (choice?.finish_reason) finishReason = choice.finish_reason
       } catch {
         // A malformed frame is not worth killing a good stream over.
       }
     }
   }
+  return { gotText, finishReason }
 }
 
 export async function streamChat(
@@ -129,8 +139,14 @@ export async function streamChat(
       return
     }
 
-    await readSse(response.body, onChunk, controller.signal)
-    if (!controller.signal.aborted) onDone()
+    const { gotText, finishReason } = await readSse(response.body, onChunk, controller.signal)
+    if (controller.signal.aborted) return
+    if (!gotText) {
+      log.error(`AI stream ended with no text (finish_reason=${finishReason ?? 'none'})`)
+      onError({ code: 'UNKNOWN', message: AI_ERROR_MESSAGES.UNKNOWN })
+      return
+    }
+    onDone()
   } catch (err) {
     if (controller.signal.aborted || (err as Error)?.name === 'AbortError') return
     log.error('AI stream failed:', (err as Error)?.message)
