@@ -4,6 +4,7 @@ dist
 .env
 resources/usda-raw/
 resources/*.db
+resources/*.db-*
 *.tsbuildinfo
 scripts/*.png
 CLAUDE.md
