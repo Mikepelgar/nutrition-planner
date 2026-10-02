@@ -48,8 +48,11 @@ for (const [src, name] of FILES) {
   const destPath = join(DEST, name)
 
   if (check) {
+    // Compare ignoring line endings: with core.autocrlf on Windows, checkouts are
+    // CRLF while the generated header is LF, which is not real drift.
+    const lf = (s) => s.replace(/\r\n/g, '\n')
     const current = existsSync(destPath) ? readFileSync(destPath, 'utf8') : ''
-    if (current !== generated) {
+    if (lf(current) !== lf(generated)) {
       console.error(`drift: ${name} does not match ${src}`)
       drifted++
     }
