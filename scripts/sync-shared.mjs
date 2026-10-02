@@ -23,7 +23,8 @@ const FILES = [
   ['src/renderer/src/lib/types.ts', 'types.ts'],
   ['src/shared/rdi.ts', 'rdi.ts'],
   ['src/shared/macros.ts', 'macros.ts'],
-  ['src/shared/aiContext.ts', 'aiContext.ts']
+  ['src/shared/aiContext.ts', 'aiContext.ts'],
+  ['src/shared/logProposal.ts', 'logProposal.ts']
 ]
 
 const HEADER =

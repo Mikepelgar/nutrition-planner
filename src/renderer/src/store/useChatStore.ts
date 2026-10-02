@@ -3,6 +3,7 @@ import type { ChatMode, SuggestionStyle } from '../lib/types'
 import type { ChatTurn } from '../../../shared/aiContext'
 import type { AiErrorCode } from '../../../shared/aiErrors'
 import { MAX_HISTORY_TURNS } from '../../../shared/aiContext'
+import { describeProposal, type LogProposal } from '../../../shared/logProposal'
 
 export interface ChatMessage {
   id: string
@@ -10,6 +11,10 @@ export interface ChatMessage {
   content: string
   streaming: boolean
   errorCode?: AiErrorCode
+  /** Entries the AI offered to log; rendered as a confirm card. */
+  proposal?: LogProposal
+  /** Card rows the user already added (or dismissed), by row key — survives tab switches. */
+  settledRows?: Record<string, 'added' | 'dismissed'>
 }
 
 interface ChatState {
@@ -28,11 +33,13 @@ interface ChatState {
   setBudgetMode: (on: boolean) => void
   setEasyPrepMode: (on: boolean) => void
   clearMessages: () => void
+  settleRow: (messageId: string, rowKey: string, state: 'added' | 'dismissed') => void
 }
 
 let removeChunkListener: (() => void) | null = null
 let removeDoneListener: (() => void) | null = null
 let removeErrorListener: (() => void) | null = null
+let removeProposalListener: (() => void) | null = null
 
 /**
  * Prior turns sent to the model for conversation memory. Failed and
@@ -41,8 +48,14 @@ let removeErrorListener: (() => void) | null = null
  */
 function historyFrom(messages: ChatMessage[]): ChatTurn[] {
   return messages
-    .filter(m => !m.streaming && !m.errorCode && m.content.trim().length > 0)
-    .map(({ role, content }) => ({ role, content }))
+    .filter(m => !m.streaming && !m.errorCode)
+    // A proposal is carried as a one-line summary so the model remembers what
+    // it offered to log (the card itself is UI, not conversation).
+    .map(({ role, content, proposal }) => ({
+      role,
+      content: proposal ? `${content}\n\n${describeProposal(proposal)}`.trim() : content
+    }))
+    .filter(t => t.content.trim().length > 0)
     .slice(-MAX_HISTORY_TURNS)
 }
 
@@ -67,6 +80,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     removeChunkListener?.()
     removeDoneListener?.()
     removeErrorListener?.()
+    removeProposalListener?.()
+
+    removeProposalListener = window.api.onAiProposal(({ messageId: mid, proposal }) => {
+      if (mid !== messageId) return
+      set(state => ({
+        messages: state.messages.map(m => (m.id === messageId ? { ...m, proposal } : m))
+      }))
+    })
 
     removeChunkListener = window.api.onAiChunk(({ messageId: mid, chunk }) => {
       if (mid !== messageId) return
@@ -125,5 +146,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setStyle: (style) => set({ style }),
   setBudgetMode: (budgetMode) => set({ budgetMode }),
   setEasyPrepMode: (easyPrepMode) => set({ easyPrepMode }),
-  clearMessages: () => set({ messages: [] })
+  clearMessages: () => set({ messages: [] }),
+  settleRow: (messageId, rowKey, rowState) =>
+    set(state => ({
+      messages: state.messages.map(m =>
+        m.id === messageId ? { ...m, settledRows: { ...m.settledRows, [rowKey]: rowState } } : m
+      )
+    }))
 }))

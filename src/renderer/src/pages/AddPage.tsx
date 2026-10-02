@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Copy, X } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
-import { useProfileStore } from '../store/useProfileStore'
+import { useDayTargets } from '../hooks/useDayTargets'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
 import { FoodSearch } from '../components/food/FoodSearch'
 import { RecentFoods, type FoodHistoryMode } from '../components/food/RecentFoods'
@@ -20,14 +20,13 @@ const FOOD_TABS: { id: FoodTab; label: string }[] = [
 
 export function AddPage() {
   const { date, entries, loading, loadDay, nutrientTotals, copyFrom } = usePlanStore()
-  const { macroTargets } = useProfileStore()
+  const burned = usePlanStore(s => s.burnedKcal)
+  const macroTargets = useDayTargets() // includes this day's exercise
   const nutrients = useNutrientTotals()
   const [foodTab, setFoodTab] = useState<FoodTab>('search')
-  const [burned, setBurned] = useState(0)
   const [showCopy, setShowCopy] = useState(false)
 
   useEffect(() => { loadDay(date) }, [date])
-  useEffect(() => { window.api.exerciseCaloriesForDate({ date }).then(r => setBurned(r.calories)) }, [date])
 
   const totalCal = nutrientTotals.find(n => n.nutrientId === 1008)?.intake ?? 0
 
@@ -125,7 +124,7 @@ export function AddPage() {
 
         {/* Calorie summary (target includes calories burned via exercise) */}
         {macroTargets && (() => {
-          const budget = macroTargets.calories + burned
+          const budget = macroTargets.calories
           return (
             <div className="px-4 py-3 border-b border-gray-800">
               <div className="flex justify-between items-center mb-1.5">

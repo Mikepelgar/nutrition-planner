@@ -23,6 +23,7 @@ import {
   buildMealPlanMessages,
   type AiMessages
 } from '../_shared/aiContext.ts'
+import { LOG_TOOL } from '../_shared/logProposal.ts'
 
 const MODEL = Deno.env.get('AI_MODEL') ?? 'gpt-5-mini'
 
@@ -134,6 +135,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
       model: MODEL,
       max_completion_tokens: MAX_TOKENS[request.feature],
       reasoning_effort: REASONING_EFFORT,
+      // Chat can propose log entries; the client turns the call into a confirm card.
+      ...(request.feature === 'chat' ? { tools: [LOG_TOOL], tool_choice: 'auto' } : {}),
       stream: true,
       messages: [{ role: 'system', content: built.system }, ...built.messages]
     }),
