@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Flame, MessageSquare, Plus } from 'lucide-react'
 import { usePlanStore } from '../store/usePlanStore'
-import { useProfileStore } from '../store/useProfileStore'
+import { useDayTargets } from '../hooks/useDayTargets'
 import { useNutrientTotals } from '../hooks/useNutrientTotals'
 import { fmt, todayIso } from '../lib/formatters'
 
@@ -49,19 +49,15 @@ function MacroBar({ label, intake, target, color }: { label: string; intake: num
 }
 
 export function DashboardPage({ onNavigate }: Props) {
-  const { nutrientTotals, date, loadDay } = usePlanStore()
-  const { macroTargets } = useProfileStore()
+  const { nutrientTotals, date, loadDay, refreshBurned, burnedKcal: burned } = usePlanStore()
+  const macroTargets = useDayTargets() // includes today's exercise
   const nutrients = useNutrientTotals()
-  const [burned, setBurned] = useState(0)
-  const today = todayIso()
 
-  useEffect(() => {
-    window.api.exerciseCaloriesForDate({ date: today }).then(r => setBurned(r.calories))
-  }, [])
-
-  // The dashboard is "today" focused — make sure today's plan is loaded.
+  // The dashboard is "today" focused — make sure today's plan is loaded, and
+  // pick up exercise logged elsewhere (Exercise tab, AI chat) since then.
   useEffect(() => {
     if (date !== todayIso()) loadDay(todayIso())
+    else refreshBurned()
   }, [])
 
   const totalsMap = new Map(nutrientTotals.map(n => [n.nutrientId, n.intake]))
@@ -77,7 +73,7 @@ export function DashboardPage({ onNavigate }: Props) {
     .sort((a, b) => a.displayPercent - b.displayPercent)
     .slice(0, 4)
 
-  const remaining = macroTargets ? macroTargets.calories + burned - intakeCal : 0
+  const remaining = macroTargets ? macroTargets.calories - intakeCal : 0
 
   return (
     <div className="h-full overflow-y-auto px-6 py-6 max-w-3xl mx-auto">

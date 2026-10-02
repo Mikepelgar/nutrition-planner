@@ -13,6 +13,7 @@ import log from 'electron-log/main'
 import { getAccessToken } from './supabase'
 import { AI_ERROR_MESSAGES, type AiErrorCode, type AiErrorPayload } from '../../shared/aiErrors'
 import type { ChatTurn, CoachContextInputs } from '../../shared/aiContext'
+import { LOG_TOOL_NAME, parseLogProposal, type LogProposal } from '../../shared/logProposal'
 
 export type AiFeature = 'chat' | 'weekly_review' | 'meal_plan'
 
@@ -47,10 +48,17 @@ function statusToCode(status: number): AiErrorCode {
   return 'UNKNOWN'
 }
 
+interface SseResult {
+  gotText: boolean
+  finishReason: string | null
+  /** Tool calls, each reassembled from its streamed fragments. */
+  toolCalls: Array<{ name: string; args: string }>
+}
+
 /**
  * Reads an OpenAI-compatible SSE stream, emitting text deltas. Resolves with
- * whether any text arrived and the provider's finish_reason, so an empty reply
- * can be reported instead of rendering as a blank message.
+ * whether any text arrived, the provider's finish_reason, and any tool calls,
+ * so an empty reply can be reported instead of rendering as a blank message.
  *
  * Frames are not guaranteed to align with network chunks, so a partial line is
  * held back and prepended to the next read rather than being parsed and lost.
@@ -59,12 +67,16 @@ async function readSse(
   body: ReadableStream<Uint8Array>,
   onChunk: (text: string) => void,
   signal: AbortSignal
-): Promise<{ gotText: boolean; finishReason: string | null }> {
+): Promise<SseResult> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let gotText = false
   let finishReason: string | null = null
+  // Tool calls stream as fragments keyed by index: the name arrives once, the
+  // JSON arguments arrive in pieces that only parse once concatenated.
+  const calls = new Map<number, { name: string; args: string }>()
+  const result = (): SseResult => ({ gotText, finishReason, toolCalls: [...calls.values()] })
 
   while (!signal.aborted) {
     const { done, value } = await reader.read()
@@ -77,7 +89,7 @@ async function readSse(
     for (const line of lines) {
       if (!line.startsWith('data:')) continue
       const payload = line.slice(5).trim()
-      if (payload === '[DONE]') return { gotText, finishReason }
+      if (payload === '[DONE]') return result()
       try {
         const choice = JSON.parse(payload)?.choices?.[0]
         const delta = choice?.delta?.content
@@ -86,19 +98,27 @@ async function readSse(
           onChunk(delta)
         }
         if (choice?.finish_reason) finishReason = choice.finish_reason
+        for (const tc of choice?.delta?.tool_calls ?? []) {
+          const idx = typeof tc?.index === 'number' ? tc.index : 0
+          const call = calls.get(idx) ?? { name: '', args: '' }
+          if (tc?.function?.name) call.name = tc.function.name
+          if (tc?.function?.arguments) call.args += tc.function.arguments
+          calls.set(idx, call)
+        }
       } catch {
         // A malformed frame is not worth killing a good stream over.
       }
     }
   }
-  return { gotText, finishReason }
+  return result()
 }
 
 export async function streamChat(
   req: AiStreamRequest,
   onChunk: (chunk: string) => void,
   onDone: () => void,
-  onError: (err: AiErrorPayload) => void
+  onError: (err: AiErrorPayload) => void,
+  onProposal?: (proposal: LogProposal) => void
 ): Promise<void> {
   const controller = new AbortController()
   activeStreams.set(req.messageId, controller)
@@ -139,9 +159,22 @@ export async function streamChat(
       return
     }
 
-    const { gotText, finishReason } = await readSse(response.body, onChunk, controller.signal)
+    const { gotText, finishReason, toolCalls } = await readSse(response.body, onChunk, controller.signal)
     if (controller.signal.aborted) return
-    if (!gotText) {
+
+    let proposed = false
+    for (const call of toolCalls) {
+      if (call.name !== LOG_TOOL_NAME) continue
+      const proposal = parseLogProposal(call.args)
+      if (proposal && onProposal) {
+        onProposal(proposal)
+        proposed = true
+      } else {
+        log.warn(`AI ${LOG_TOOL_NAME} call had no usable items (${call.args.length} chars)`)
+      }
+    }
+
+    if (!gotText && !proposed) {
       log.error(`AI stream ended with no text (finish_reason=${finishReason ?? 'none'})`)
       onError({ code: 'UNKNOWN', message: AI_ERROR_MESSAGES.UNKNOWN })
       return

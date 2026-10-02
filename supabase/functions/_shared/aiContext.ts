@@ -11,7 +11,7 @@
  * never drift apart. All targets come from `macros.ts`; nothing is recomputed.
  */
 import type { UserProfile, Goal, SuggestionStyle, DietType, MealType } from './types.ts'
-import { calcTDEE, calcMacroTargets, DIET_RULES, DIET_LABELS } from './macros.ts'
+import { calcTDEE, calcMacroTargets, addExerciseToTargets, DIET_RULES, DIET_LABELS } from './macros.ts'
 
 // Types
 
@@ -148,6 +148,9 @@ export function buildCoachContext(inputs: CoachContextInputs): CoachContext {
   const tdee = profile ? calcTDEE(profile) : null
   const targets = profile ? calcMacroTargets({ ...profile, goal: mode }) : null
   const calorieTarget = targets?.calories ?? null
+  // Macro targets the user sees include today's exercise; the calorie target
+  // stays the base (kcalRemaining adds exercise on its own, below).
+  const dayTargets = targets ? addExerciseToTargets(targets, kcalBurnedExercise, profile?.dietType) : null
   const surplusOrDeficit = tdee != null && calorieTarget != null ? calorieTarget - tdee : null
 
   const sum = (f: (i: LoggedItemInput) => number): number =>
@@ -177,9 +180,9 @@ export function buildCoachContext(inputs: CoachContextInputs): CoachContext {
     diet: {
       type: profile ? DIET_LABELS[profile.dietType ?? 'balanced'] : null,
       macroRationale: dietRationale(profile?.dietType),
-      proteinG: targets?.proteinG ?? null,
-      carbsG: targets?.carbsG ?? null,
-      fatG: targets?.fatG ?? null
+      proteinG: dayTargets?.proteinG ?? null,
+      carbsG: dayTargets?.carbsG ?? null,
+      fatG: dayTargets?.fatG ?? null
     },
     today: {
       date,
@@ -438,9 +441,27 @@ export interface AiMessages {
   messages: ChatTurn[]
 }
 
+/**
+ * Chat-only: the model can offer to log things via the propose_log tool. The
+ * app resolves foods against the local USDA database and asks the user to
+ * confirm, so the model must not claim anything has been saved.
+ */
+const LOGGING_INSTRUCTIONS = [
+  '',
+  '=== LOGGING FOR THE USER ===',
+  "You have a propose_log tool that puts entries on a confirmation card for TODAY's log.",
+  '- Call it ONLY when the user asks you to log, add, track, or record something they ate, a workout, or their weight.',
+  '  Questions like "what\'s in a pork chop?" are NOT a request to log.',
+  '- Foods: short generic names that will match a USDA search ("pork chop broiled", "brown rice cooked"),',
+  '  realistic gram estimates, and the meal they said (else the one that fits the time of day).',
+  '- Exercise: estimate calories_burned as MET × their weight in kg × hours.',
+  '- After calling it, reply with ONE short sentence telling them to review the card and tap Add.',
+  '  Never say it is already logged — nothing is saved until they confirm.'
+].join('\n')
+
 export function buildChatMessages(ctx: CoachContext, history: ChatTurn[], question: string): AiMessages {
   return {
-    system: buildSystemPrompt(ctx),
+    system: buildSystemPrompt(ctx) + LOGGING_INSTRUCTIONS,
     messages: mergeConsecutiveTurns([
       ...capHistory(history),
       { role: 'user', content: `${renderTodaySnapshot(ctx)}\n\n=== MY QUESTION ===\n${question}` }

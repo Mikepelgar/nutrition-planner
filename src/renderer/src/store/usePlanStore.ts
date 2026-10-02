@@ -18,9 +18,12 @@ interface PlanState {
   entries: PlanEntry[]
   foodCache: Map<number, FoodDetail>
   nutrientTotals: NutrientTotal[]
+  /** kcal burned via exercise on `date` — raises that day's targets. */
+  burnedKcal: number
   loading: boolean
 
   loadDay: (date: string) => Promise<void>
+  refreshBurned: () => Promise<void>
   addEntry: (food: FoodDetail, servingUnit: ServingUnit, servingAmount: number) => Promise<void>
   updateEntry: (entryId: number, food: FoodDetail, servingUnit: ServingUnit, servingAmount: number) => Promise<void>
   setEntryMeal: (entryId: number, meal: MealType) => Promise<void>
@@ -55,11 +58,15 @@ export const usePlanStore = create<PlanState>((set, get) => ({
   entries: [],
   foodCache: new Map(),
   nutrientTotals: [],
+  burnedKcal: 0,
   loading: false,
 
   loadDay: async (date) => {
     set({ loading: true, date })
-    const plan = await window.api.planGetOrCreate({ date })
+    const [plan, burned] = await Promise.all([
+      window.api.planGetOrCreate({ date }),
+      window.api.exerciseCaloriesForDate({ date })
+    ])
     const entries = await window.api.planGetEntries({ planId: plan.id })
 
     // Fetch food details for any uncached entries — in parallel, one request
@@ -71,7 +78,16 @@ export const usePlanStore = create<PlanState>((set, get) => ({
       if (detail) cache.set(detail.fdcId, detail)
     }
 
-    set({ plan, entries, foodCache: cache, nutrientTotals: computeTotals(entries, cache), loading: false })
+    set({
+      plan, entries, foodCache: cache, nutrientTotals: computeTotals(entries, cache),
+      burnedKcal: burned.calories, loading: false
+    })
+  },
+
+  refreshBurned: async () => {
+    const { date } = get()
+    const { calories } = await window.api.exerciseCaloriesForDate({ date })
+    if (get().date === date) set({ burnedKcal: calories })
   },
 
   addEntry: async (food, servingUnit, servingAmount) => {
