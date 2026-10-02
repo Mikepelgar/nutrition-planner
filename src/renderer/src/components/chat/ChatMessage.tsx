@@ -1,6 +1,7 @@
 import { AlertCircle } from 'lucide-react'
 import type { ChatMessage as Msg } from '../../store/useChatStore'
 import { Spinner } from '../ui/Spinner'
+import { LogProposalCard } from './LogProposalCard'
 
 interface Props {
   msg: Msg
@@ -34,20 +35,28 @@ export function ChatMessage({ msg, onGoToSettings }: Props) {
     )
   }
 
+  // A reply can be only a proposal card (the model called the tool and wrote nothing).
+  const showBubble = isUser || msg.streaming || msg.content.length > 0
+
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
-          isUser
-            ? 'bg-emerald-700 text-white rounded-br-sm'
-            : 'bg-gray-800 text-gray-200 rounded-bl-sm'
-        }`}
-      >
-        {msg.content || (msg.streaming ? <Spinner size={14} /> : null)}
-        {msg.streaming && msg.content && (
-          <span className="inline-block w-1.5 h-3.5 bg-gray-400 ml-0.5 animate-pulse rounded-sm align-text-bottom" />
-        )}
-      </div>
+    <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      {showBubble && (
+        <div
+          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
+            isUser
+              ? 'bg-emerald-700 text-white rounded-br-sm'
+              : 'bg-gray-800 text-gray-200 rounded-bl-sm'
+          }`}
+        >
+          {msg.content || (msg.streaming ? <Spinner size={14} /> : null)}
+          {msg.streaming && msg.content && (
+            <span className="inline-block w-1.5 h-3.5 bg-gray-400 ml-0.5 animate-pulse rounded-sm align-text-bottom" />
+          )}
+        </div>
+      )}
+      {msg.proposal && (
+        <LogProposalCard messageId={msg.id} proposal={msg.proposal} settledRows={msg.settledRows} />
+      )}
     </div>
   )
 }

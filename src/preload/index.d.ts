@@ -10,6 +10,7 @@ import type {
   Exercise,
   ReminderPrefs
 } from '../renderer/src/lib/types'
+import type { LogProposal } from '../shared/logProposal'
 import type { DailyLogEntry, NutrientBreakdownEntry } from '../main/db/queries/log.queries'
 import type { QuickAddItem } from '../main/db/queries/quickadd.queries'
 import type { FavoriteItem } from '../main/db/queries/favorites.queries'
@@ -117,6 +118,7 @@ declare global {
       onAiChunk(cb: (data: { messageId: string; chunk: string }) => void): () => void
       onAiDone(cb: (data: { messageId: string }) => void): () => void
       onAiError(cb: (data: { messageId: string; code: AiErrorCode; message: string }) => void): () => void
+      onAiProposal(cb: (data: { messageId: string; proposal: LogProposal }) => void): () => void
       onAuthChanged(cb: (data: { signedIn: boolean; email?: string | null; error?: string }) => void): () => void
     }
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcBMR, calcTDEE, calcMacroTargets } from './macros'
+import { calcBMR, calcTDEE, calcMacroTargets, addExerciseToTargets } from './macros'
 import type { UserProfile } from '../renderer/src/lib/types'
 
 // Base: 30yo male, 80kg, 180cm, moderately active. BMR = 10*80 + 6.25*180 - 5*30 + 5 = 1780.
@@ -71,5 +71,27 @@ describe('custom targets override', () => {
   it('falls back to the formula when custom values are incomplete', () => {
     const m = calcMacroTargets(p({ useCustomTargets: true, customCalories: 2000 }))
     expect(m.calories).toBe(calcTDEE(base))
+  })
+})
+
+describe('addExerciseToTargets', () => {
+  const t = { calories: 2000, proteinG: 150, carbsG: 200, fatG: 67 } // carbs 800 kcal, fat 603 kcal
+
+  it('no exercise leaves targets untouched', () => expect(addExerciseToTargets(t, 0)).toBe(t))
+  it('negative burn is ignored', () => expect(addExerciseToTargets(t, -300)).toBe(t))
+
+  it('adds the burn to calories and splits it across carbs/fat by the base ratio', () => {
+    const r = addExerciseToTargets(t, 400, 'balanced')
+    expect(r.calories).toBe(2400)
+    expect(r.proteinG).toBe(150)
+    // 800/(800+603) of 400 kcal → carbs; the rest → fat
+    expect(r.carbsG).toBe(Math.round(200 + (400 * (800 / 1403)) / 4))
+    expect(r.fatG).toBe(Math.round(67 + (400 * (603 / 1403)) / 9))
+  })
+
+  it('keto keeps the carb cap and puts everything into fat', () => {
+    const r = addExerciseToTargets({ calories: 2000, proteinG: 150, carbsG: 25, fatG: 144 }, 450, 'keto')
+    expect(r.carbsG).toBe(25)
+    expect(r.fatG).toBe(144 + 50)
   })
 })

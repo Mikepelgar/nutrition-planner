@@ -145,6 +145,11 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.on('ai:error', handler)
     return () => ipcRenderer.removeListener('ai:error', handler)
   },
+  onAiProposal: (cb: (data: { messageId: string; proposal: unknown }) => void) => {
+    const handler = (_: unknown, data: { messageId: string; proposal: unknown }) => cb(data)
+    ipcRenderer.on('ai:proposal', handler)
+    return () => ipcRenderer.removeListener('ai:proposal', handler)
+  },
 
   // Sign-in completes out of band — the OAuth callback returns through the OS,
   // not through the invoke that opened the browser.

@@ -124,6 +124,37 @@ export function calcMacroTargets(profile: UserProfile): MacroTargets {
   return { calories, proteinG, carbsG, fatG }
 }
 
+/**
+ * Raises a day's targets by the calories burned through logged exercise, so
+ * eating those calories back does not show up as "over" on the macro bars.
+ *
+ * Protein is bodyweight-based and stays put. The extra kcal go to carbs and fat
+ * in the same proportion as the base targets split them — except on keto, where
+ * the carb cap is the point of the diet, so all of it goes to fat.
+ */
+export function addExerciseToTargets(
+  targets: MacroTargets,
+  burnedKcal: number,
+  dietType?: DietType | null
+): MacroTargets {
+  const extra = Math.max(0, Math.round(burnedKcal))
+  if (extra === 0) return targets
+
+  const carbKcal = targets.carbsG * 4
+  const fatKcal = targets.fatG * 9
+  const carbShare =
+    dietType === 'keto' ? 0 :
+    carbKcal + fatKcal > 0 ? carbKcal / (carbKcal + fatKcal) :
+    1 // degenerate base split (no carbs or fat): put it all in carbs
+
+  return {
+    calories: targets.calories + extra,
+    proteinG: targets.proteinG,
+    carbsG: Math.round(targets.carbsG + (extra * carbShare) / 4),
+    fatG: Math.round(targets.fatG + (extra * (1 - carbShare)) / 9)
+  }
+}
+
 /** Short human-readable label for a diet type (UI + AI prompt). */
 export const DIET_LABELS: Record<DietType, string> = {
   balanced: 'Balanced',

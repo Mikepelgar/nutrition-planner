@@ -12,6 +12,7 @@ import { getWeightRange } from '../db/queries/tracking.queries'
 import { calcMacroTargets } from '../services/tdee.service'
 import { buildCoachContext, type ChatTurn, type CoachContext, type CoachContextInputs } from '../../shared/aiContext'
 import { AI_ERROR_MESSAGES, type AiErrorCode, type AiErrorPayload } from '../../shared/aiErrors'
+import type { LogProposal } from '../../shared/logProposal'
 import { asString, asEnum, asDate } from './validate'
 import type { Goal, SuggestionStyle, UserProfile } from '../../renderer/src/lib/types'
 
@@ -124,11 +125,12 @@ function buildWeekSummary(db: ReturnType<typeof getDb>, profile: UserProfile | n
 function streamToRenderer(
   win: BrowserWindow | null,
   messageId: string
-): [(chunk: string) => void, () => void, (err: AiErrorPayload) => void] {
+): [(chunk: string) => void, () => void, (err: AiErrorPayload) => void, (proposal: LogProposal) => void] {
   return [
     chunk => win?.webContents.send('ai:chunk', { messageId, chunk }),
     () => win?.webContents.send('ai:done', { messageId }),
-    err => sendAiError(win, messageId, err.code, err.message)
+    err => sendAiError(win, messageId, err.code, err.message),
+    proposal => win?.webContents.send('ai:proposal', { messageId, proposal })
   ]
 }
 
