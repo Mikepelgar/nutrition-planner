@@ -231,6 +231,16 @@ function runMigrations(database: Database.Database): void {
   ]) {
     try { database.exec(sql) } catch { /* column already exists */ }
   }
+
+  // Settings left behind by the old in-app AI (provider picker, bring-your-own
+  // key, the embedded key's local usage counter). AI now runs through the hosted
+  // proxy and nothing reads these; drop them so no install keeps a stored key.
+  database.exec(`
+    DELETE FROM settings
+    WHERE key IN ('ai_provider', 'ai_model', 'ai_key_source')
+       OR key LIKE 'builtin\\_usage\\_%' ESCAPE '\\'
+       OR key LIKE '%\\_api\\_key' ESCAPE '\\'
+  `)
 }
 
 export function closeDb(): void {
