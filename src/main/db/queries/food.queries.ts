@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3'
 import type { FoodSearchResult, FoodDetail, FoodNutrient, FoodPortion } from '../../../renderer/src/lib/types'
+import { normalizeBarcode } from '../../../shared/barcode'
 
 const USDA_LIMIT = 8
 
@@ -108,9 +109,13 @@ export function searchFoods(
 }
 
 export function findFoodByBarcode(db: Database.Database, upc: string): FoodDetail | null {
-  const code = upc.trim()
+  const code = normalizeBarcode(upc)
   if (!code) return null
-  const row = db.prepare('SELECT fdc_id AS fdcId FROM food WHERE gtin_upc = ? LIMIT 1').get(code) as
+  // ~389K codes appear on several rows (USDA re-lists products across releases).
+  // Prefer the most-scanned listing, then the newest.
+  const row = db.prepare(
+    'SELECT fdc_id AS fdcId FROM food WHERE gtin_upc = ? ORDER BY popularity_score DESC, fdc_id DESC LIMIT 1'
+  ).get(code) as
     | { fdcId: number }
     | undefined
   return row ? getFoodDetail(db, row.fdcId) : null
