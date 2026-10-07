@@ -223,21 +223,51 @@ Local development without spending money: `npm run supabase:start`, then
 ## Data and privacy
 
 Your food log, profile, weights, and exercise history live in SQLite under the OS
-user-data folder — `%APPDATA%
-utrition-planner` on Windows — alongside daily backups
-and `electron-log` output. None of it is uploaded, and there is no telemetry.
+user-data folder — `%APPDATA%\nutrition-planner` on Windows — alongside daily backups
+(`backups/userdata-*.json`) and `electron-log` output (`logs/main.log`, which records
+sizes and error codes, never log or conversation content). None of it is uploaded,
+and there is no telemetry, analytics, or advertising.
 
-The server stores only an account (id + the email your OAuth provider supplies) and
-usage counters. Using an AI feature sends that question's context — profile summary,
-targets, the day's log, nutrient gaps — to the proxy, which forwards it to OpenAI.
-Skip the AI features and nothing about you leaves the machine. See [PRIVACY.md](PRIVACY.md).
+Only if you sign in to use AI, the server stores:
+
+- **An account** — an id and the email your OAuth provider (Google or GitHub)
+  supplies. No password is created; sign-in happens in your own browser. The refresh
+  token is encrypted at rest on your machine with Electron `safeStorage`.
+- **Usage counters** — request counts and dates that enforce the free allowance.
+  Row-level security limits each account to its own rows, and no client can write
+  them.
+
+Using an AI feature sends that question's context — profile summary, targets, diet
+and restrictions, the day's log, nutrient gaps, calories burned — to the proxy,
+which forwards it to OpenAI and streams the answer back. The proxy does not store
+request or reply content; OpenAI's own retention is governed by its terms. Skip the
+AI features and nothing about you leaves the machine.
+
+You can export your data (Settings → Data), sign out (Settings → AI), or delete
+everything local by removing the user-data folder. To delete your account and its
+usage counters, contact [YOUR CONTACT EMAIL OR WEBSITE].
 
 ## Attributions
 
-Food data from [USDA FoodData Central](https://fdc.nal.usda.gov/) (public domain) and
-[Open Food Facts](https://world.openfoodfacts.org/) (ODbL — attribution and
-share-alike). See [NOTICES.md](NOTICES.md); the ODbL terms apply to any redistribution
-of the bundled database.
+Whole-food and branded nutrition data comes from
+[USDA FoodData Central](https://fdc.nal.usda.gov/) (SR Legacy, Foundation, Branded),
+which is in the public domain:
+
+> U.S. Department of Agriculture, Agricultural Research Service. FoodData Central.
+
+Branded-food popularity signals are derived from
+[Open Food Facts](https://world.openfoodfacts.org/), available under the
+[Open Database License (ODbL) v1.0](https://opendatacommons.org/licenses/odbl/1-0/):
+
+> Contains information from Open Food Facts, made available under the ODbL.
+
+The ODbL requires attribution and is share-alike: a publicly distributed database
+derived from Open Food Facts data must also be made available under the ODbL. The
+bundled `resources/nutrition.db` includes such data, so review those obligations
+before redistributing it.
+
+Third-party packages are used under their own licenses, included with each package
+in `node_modules`.
 
 ## Releasing
 
