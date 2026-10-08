@@ -141,7 +141,7 @@ The app works without it; the AI features just show as unconfigured. To set one 
 6. In the dashboard, turn on Google and GitHub sign-in and add
    `http://127.0.0.1:54331/auth-callback` as a redirect URL.
 
-## What I'd change
+## What could change
 
 - The local tables assume a single user, so syncing or a web version would need a `user_id` on
   each of them.
